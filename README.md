@@ -14,7 +14,26 @@ pip install -r requirements.txt
 git clone https://github.com/mavlink/mavlink.git --recursive #note, needed for getting entities for tests, so must be under mavlink support tests
 ```
 
-you will also need PX4-Autopilot or something to test agasint
+
+Then modify mavlink\doc\mavlink_xml_to_markdown.py to add this up the top
+
+```
+class CommonMethods:
+
+    def to_dict(self):
+        return self.__dict__
+```
+
+And all the classes to derive from it.
+
+```
+class MAVXML(CommonMethods):
+```
+
+We should perhaps to this using a decorator :-0
+
+
+you will also need PX4-Autopilot or something to test against
 
 
 To run against PX4 in local simulator:
