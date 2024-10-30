@@ -1,0 +1,11 @@
+auterion-api-version: 1
+auterion-app-base: none
+
+app-name: app-template
+app-author: com.auterion
+app-version: 0.0.0
+target-platform: skynode
+
+services:
+  logger:
+    build: services/my-app
