@@ -113,7 +113,13 @@ if connectionType == 'px4wsl2_companion_udp_server':  #Normal, data rate: 400000
 
 # inspect_object(conn_physical) # (a UDPServer)
 
-conn_runtime = libmav.NetworkRuntime(message_set, heartbeat_message, conn_physical)
+# default system ID=componentID=97
+own_mavlink_ids = {
+    "system_id": 250, # Some GCS unallocated id
+                   "component_id": 194 # MAV_COMP_ID_ONBOARD_COMPUTER4 - could be anything
+                   }
+conn_runtime = libmav.NetworkRuntime(libmav.Identifier(own_mavlink_ids["system_id"], own_mavlink_ids["component_id"]), message_set, heartbeat_message, conn_physical)
+
 
 #inspect_object(conn_runtime) # (a NetworkRuntime)
 
@@ -433,393 +439,15 @@ msgInfo = MAVLinkSupportInfo()
 
 
 
-
 # Get callback for any message.
 #all_messages_callback_handle = connection.add_message_callback(lambda msg: print(f'Yay {msg.name}'))
 all_messages_callback_handle = connection.add_message_callback(msgInfo.messageArrived)
 
 
 
-def commandSenderBlocking(connection, commandName, target_system, target_component, senderType=0, param1=0, param2=0, param3=0, param4=0, param5=0, param6=0, param7=0):
-    """
-    Sends a command as either a COMMAND_LONG or COMMAND_INT, based on the type.
 
-    senderType (int): The type of sender - 0 is command long, 1 is command int.
-
-    Args
-        connection (Connection): The connection object to use for sending
-        commandName (str): Name of command to send (is converted internally to an ID)
-        target_system (int): MAVLink system ID
-        target_component (int): MAVLink component ID
-        senderType (int): 0 for command_long (default), 1 for command_int.
-        param1 (float): Value to send in param 1
-        param2 (float): Value to send in param 2
-        param3 (float): Value to send in param 3
-        param4 (float): Value to send in param 4
-        param5 (float): Value to send in param 5
-        param6 (float): Value to send in param 6
-        param7 (float): Value to send in param 7
-
-    """
-    # create our command long message.
-
-    if senderType==0:
-        print('commandSenderBlocking: ' + commandName + "(COMMAND_LONG)")
-        command_sender = message_set.create('COMMAND_LONG')
-        command_sender['param5']=param5;
-        command_sender['param6']=param6;
-        command_sender['param7']=param7;
-    else:
-        print('commandSenderBlocking: ' + commandName + "(COMMAND_INT)")
-        command_sender = message_set.create('COMMAND_INT')
-        command_sender['x']=param5;
-        command_sender['y']=param6;
-        command_sender['z']=param7;
-
-    #inspect_object(command_sender)
-    commandId = message_set.enum(commandName)
-    #print("commandName")
-    #inspect_object(commandId)
-    command_sender['command']=commandId;
-    command_sender['param1']=param1;
-    command_sender['param2']=param2;
-    command_sender['param3']=param3;
-    command_sender['param4']=param4;
-
-    command_sender['target_component']=target_component;
-    command_sender['target_system']=target_component;
-
-    #print("exp")
-    expectation = connection.expect("COMMAND_ACK")
-    #inspect_object(expectation) # (a Connection)
-    """
-    Public API: _ExpectationWrapper
-    """
-    print("send")
-    connection.send(command_sender)
-    print("recv in 10s")
-    command_ack = connection.receive(expectation, 5000) # With timeout, 3 seconds - should that be a param?
-
-
-    #inspect_object(command_ack)
-    #inspect_object(command_ack.header)
-    #inspect_object(command_ack.type)
-    #print(command_ack["command"])
-    #print(command_ack["result"])
-
-    lookupResult = {
-        0: "MAV_RESULT_ACCEPTED",
-        1: "MAV_RESULT_TEMPORARILY_REJECTED",
-        2: "MAV_RESULT_DENIED",
-        3: "MAV_RESULT_UNSUPPORTED",
-        4: "MAV_RESULT_FAILED",
-        5: "MAV_RESULT_IN_PROGRESS",
-        6: "MAV_RESULT_CANCELLED",
-        7: "MAV_RESULT_COMMAND_LONG_ONLY",
-        8: "MAV_RESULT_COMMAND_INT_ONLY",
-        9: "MAV_RESULT_COMMAND_UNSUPPORTED_MAV_FRAME",
-    }
-    print('COMMAND_ACK: ' + lookupResult[command_ack["result"]])
-
-
-
-
-# Gobal dict of command acks we are waiting on
-# Along with the time when sent
-ackWaiting = dict()
-
-import threading
-# Global variable to keep track of the timer
-timer = None
-
-def set_interval(func, sec):
-    #print('debug: set_interval() called')
-    global timer
-
-    def func_wrapper():
-        global timer
-        if ackWaiting:
-            set_interval(func, sec)
-            func()
-        else:
-            #print(" debug: No ACKs waiting, stopping the timer.")
-            timer = None
-
-    if timer is None:
-        #print(" debug: timer stopped - starting")
-        timer = threading.Timer(sec, func_wrapper)
-        timer.start()
-    else:
-        #print(" debug: timer running still")
-        pass
-
-def checkForAcks():
-    print('checkForAcks() called')
-    if ackWaiting:
-        for key, value in ackWaiting.items():
-            if time.time() > value + 5:
-                # it's been sitting there too long
-                print(f"Command {key} too slow")
-                del ackWaiting[key]
-                # Some kind of callback
-            else:
-                print(f"Key: {key} Rem {time.time() - value}: still good")
-    else:
-        print("NO ACKS WAITING")
-        pass
-
-
-def ackArrived(msg):
-    lookupResult = {
-    0: "MAV_RESULT_ACCEPTED",
-    1: "MAV_RESULT_TEMPORARILY_REJECTED",
-    2: "MAV_RESULT_DENIED",
-    3: "MAV_RESULT_UNSUPPORTED",
-    4: "MAV_RESULT_FAILED",
-    5: "MAV_RESULT_IN_PROGRESS",
-    6: "MAV_RESULT_CANCELLED",
-    7: "MAV_RESULT_COMMAND_LONG_ONLY",
-    8: "MAV_RESULT_COMMAND_INT_ONLY",
-    9: "MAV_RESULT_COMMAND_UNSUPPORTED_MAV_FRAME",
-    }
-    #print(msg.name)
-    if msg.name == "COMMAND_ACK":
-
-        #print(ackWaiting)
-        print(f'COMMAND_ACK: ({msg["command"]}): {lookupResult[msg["result"]]} (prog: {msg["progress"]}, resparm2: {msg["result_param2"]})')
-        if msg["command"] in ackWaiting:
-            #print('3')
-            #print(ackWaiting)
-            del ackWaiting[msg["command"]]
-            #print('4')
-            #print(ackWaiting)
-            #if not ackWaiting:
-            #    #print("Not waiting on acks")
-            #    #print(ackWaiting)
-            #    connection.remove_message_callback(command_ack_callback_handle)
-
-        else:
-            print(f"Unexpected ack: {msg['command']}")
-    else:
-        pass
-        #print(msg.name)
-
-
-command_ack_callback_handle = connection.add_message_callback(ackArrived)
-
-
-def commandSenderNonBlocking(connection, commandName, target_system, target_component, senderType=0, param1=0, param2=0, param3=0, param4=0, param5=0, param6=0, param7=0):
-    """
-    Sends a command as either a COMMAND_LONG or COMMAND_INT, based on the type.
-
-    senderType (int): The type of sender - 0 is command long, 1 is command int.
-
-    Args
-        connection (Connection): The connection object to use for sending
-        commandName (str): Name of command to send (is converted internally to an ID)
-        target_system (int): MAVLink system ID
-        target_component (int): MAVLink component ID
-        senderType (int): 0 for command_long (default), 1 for command_int.
-        param1 (float): Value to send in param 1
-        param2 (float): Value to send in param 2
-        param3 (float): Value to send in param 3
-        param4 (float): Value to send in param 4
-        param5 (float): Value to send in param 5
-        param6 (float): Value to send in param 6
-        param7 (float): Value to send in param 7
-
-    """
-
-    # create our command long message.
-
-    if senderType==0: #command long
-        print('commandSenderNonBlocking: ' + commandName + "(COMMAND_LONG)")
-        command_sender = message_set.create('COMMAND_LONG')
-        command_sender['param5']=param5
-        command_sender['param6']=param6
-        command_sender['param7']=param7
-    else:
-        print('commandSenderNonBlocking: ' + commandName + "(COMMAND_INT)")
-        command_sender = message_set.create('COMMAND_INT')
-        command_sender['x'] = param5
-        command_sender['y'] = param6
-        command_sender['z'] = param7
-
-    #inspect_object(command_sender)
-    commandId = message_set.enum(commandName)
-    #print("commandName")
-    #inspect_object(commandId)
-    command_sender['command']=commandId
-    command_sender['param1']=param1
-    command_sender['param2']=param2
-    command_sender['param3']=param3
-    command_sender['param4']=param4
-
-    command_sender['target_component']=target_component
-    command_sender['target_system']=target_component
-
-    #print("exp")
-    #expectation = connection.expect("COMMAND_ACK")
-    #inspect_object(expectation) # (a Connection)
-    print(f"Sending: {commandName} ({commandId})")
-    ackWaiting[commandId] = time.time()
-    set_interval(checkForAcks, 1)
-
-    connection.send(command_sender)
-    #print("waiting to recv in ?s")
-    #command_ack = connection.receive(expectation, 5000) # With timeout, 3 seconds - should that be a param?
-    #time.sleep(5)
-    #if ackReceived:
-    #    print("acc rec")
-    #else:
-    #    print("acc_not_rec timout")
-    #    connection.remove_message_callback(command_ack_callback_handle)
-
-
-def setMessageIntervalBlocking(connection, target_system, target_component, target_message, interval, senderType=0):
-    """
-    Set message interval for specified message in us.
-
-    Args
-        connection (Connection): The connection object to use for sending
-        target_system (int): MAVLink system ID
-        target_component (int): MAVLink component ID
-        target_message (string): String name for message for which interval is set.
-        interval (int): Interval between messages of type target_message in us. -1 to disable.
-        senderType (int): 0 for command_long (default), 1 for command_int.
-    """
-    targetMessageId = message_set.id_for_message(target_message)
-    commandSenderBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_SET_MESSAGE_INTERVAL', target_system=target_system, target_component=target_component, param1=targetMessageId, param2=interval)
-
-    #Note, target id of command ACK is   target_component: 97, target_system: 97. Is that what we are by default?
-
-
-def sendCommandRequestMessageNonBlocking(connection, target_system, target_component, target_message_id, index_id, param3=0, param4=0, param5=0, param6=0, param7=0,senderType=0):
-    """
-    Request a message.
-
-    Args
-        connection (Connection): The connection object to use for sending
-        target_system (int): MAVLink system ID
-        target_component (int): MAVLink component ID
-        senderType (int): 0 for command_long (default), 1 for command_int.
-
-        1: (Message ID)	The MAVLink message ID of the requested message.	min: 0 max: 16777215 inc: 1
-        2: Use for index ID, if required. Otherwise, the use of this parameter (if any) must be defined in the requested message. By default assumed not used (0).
-        3: The use of this parameter (if any), must be defined in the requested message. By default assumed not used (0).
-        4: The use of this parameter (if any), must be defined in the requested message. By default assumed not used (0).
-        5: The use of this parameter (if any), must be defined in the requested message. By default assumed not used (0).
-        6: The use of this parameter (if any), must be defined in the requested message. By default assumed not used (0).
-        7: Target address for requested message (if message has target address fields). 0: Flight-stack default, 1: address of requestor, 2: broadcast.
-
-    """
-
-    commandSenderNonBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_REQUEST_MESSAGE', target_system=target_system, target_component=target_component, param1=target_message_id, param2=index_id, param3=param3, param4=param4, param5=param4, param6=param6, param7=param7)
-
-
-
-def sendCommandMessageIntervalNonBlocking(connection, target_system, target_component, target_message_id, interval, response_target=0, param3=0, param4=0, param5=0, param6=0, param7=0,senderType=0):
-    """
-    Set message interval for specified message in us.
-
-    Args
-        connection (Connection): The connection object to use for sending
-        target_system (int): MAVLink system ID
-        target_component (int): MAVLink component ID
-        target_message (string): String name for message for which interval is set.
-        interval (int): Interval between messages of type target_message in us. -1 to disable. 0: request default rate (which may be zero).
-        senderType (int): 0 for command_long (default), 1 for command_int.
-        responseTarget: Target address for requested message (if message has target address fields). 0: Flight-stack default, 1: address of requestor, 2: broadcast.
-    """
-
-    commandSenderNonBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_SET_MESSAGE_INTERVAL', target_system=target_system, target_component=target_component, param1=target_message_id, param2=interval, param3=param3, param4=param4, param5=param4, param6=param6, param7=param7)
-
-
-
-def setCommandTakeoff(connection, target_system, target_component, pitch, yaw, lat, lon, alt, senderType=0):
-    """
-    Set message interval for specified message in us.
-
-    Args
-        connection (Connection): The connection object to use for sending
-        target_system (int): MAVLink system ID
-        target_component (int): MAVLink component ID
-        senderType (int): 0 for command_long (default), 1 for command_int.
-
-        1: Pitch	Minimum pitch (if airspeed sensor present), desired pitch without sensor	deg
-        2	Empty
-        3	Empty
-        4: Yaw	Yaw angle (if magnetometer present), ignored without magnetometer. NaN to use the current system yaw heading mode (e.g. yaw towards next waypoint, yaw to home, etc.).	deg
-        5: Latitude	Latitude
-        6: Longitude	Longitude
-        7: Altitude	Altitude
-
-    """
-
-    #commandSenderBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_NAV_TAKEOFF', target_system=target_system, target_component=target_component, param1=pitch, param4=yaw, param5=lat, param6=lon, param7=alt)
-    commandSenderNonBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_NAV_TAKEOFF', target_system=target_system, target_component=target_component, param1=pitch, param4=yaw, param5=lat, param6=lon, param7=alt)
-
-    #Note, target id of command ACK is   target_component: 97, target_system: 97. Is that what we are by default?
-    #print('setCommandTakeoff() fell through')
-
-
-def setCommandArm(connection, target_system, target_component, senderType=0):
-    """
-    Set message interval for specified message in us.
-
-    Args
-        connection (Connection): The connection object to use for sending
-        target_system (int): MAVLink system ID
-        target_component (int): MAVLink component ID
-        senderType (int): 0 for command_long (default), 1 for command_int.
-
-        1: Pitch	Minimum pitch (if airspeed sensor present), desired pitch without sensor	deg
-        2	Force = 1
-
-
-    """
-
-    #commandSenderBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_NAV_TAKEOFF', target_system=target_system, target_component=target_component, param1=pitch, param4=yaw, param5=lat, param6=lon, param7=alt)
-    commandSenderNonBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_COMPONENT_ARM_DISARM', target_system=target_system, target_component=target_component, param1=1)
-
-    #Note, target id of command ACK is   target_component: 97, target_system: 97. Is that what we are by default?
-    #print('setCommandArm() fell through')
-
-def sendTestCommands():
-    print("sleep 1 before takeoff and arm")
-    time.sleep(1)
-    targetSystem = 1
-    targetComponent = message_set.enum("MAV_COMP_ID_AUTOPILOT1")
-
-    # Try same command with command int
-    setCommandTakeoff(connection=connection, target_system=targetSystem, target_component=targetComponent, pitch=0, yaw=0, lat=0, lon=0, alt=500, senderType=1)
-    setCommandArm(connection=connection, target_system=targetSystem, target_component=targetComponent, senderType=1)
-
-    print("sleep 5 after takeoff version 1")
-    time.sleep(5)
-    print("sleep v1 end")
-
-    # Try the nav_takeoff command
-    setCommandTakeoff(connection=connection, target_system=targetSystem, target_component=targetComponent, pitch=0, yaw=0, lat=0, lon=0, alt=500, senderType=0)
-    setCommandArm(connection=connection, target_system=targetSystem, target_component=targetComponent, senderType=0)
-    print("sleep 5 after takeoff version 2")
-    time.sleep(5)
-    print("sleep v2 end")
-
-    #print("start blocking command")
-    #setMessageIntervalBlocking(connection=connection, target_system=targetSystem, target_component=targetComponent, target_message=targetMessage, interval=10000, senderType=0)
-    #print("end blocking command")
-    # Try same command with command int
-    #time.sleep(5)
-    #setMessageIntervalBlocking(connection=connection, target_system=targetSystem, target_component=targetComponent, target_message=targetMessage, interval=10000, senderType=1)
-
-    #time.sleep(2) # TODO Did we get command_ACK in log? Yes!
-
-    #messageAccumulator= dict()
-    #time.sleep(5)
-    #pprint.pprint(messageAccumulator)
-
-
+"""
+# Do this using command sender in its own test
 def sendAllCommands():
     # Sends all commands, one after another with a space between. We're just trying to work out if supported or not.
     # Get all commandds
@@ -830,12 +458,16 @@ def sendAllCommands():
         print(f"Sending: {name}")
         commandSenderNonBlocking(connection=connection, commandName=name, target_system=targetSystem, target_component=targetComponent)
         time.sleep(1)
+"""
 
+def getSupportedModes():
+    print("debug: getSupportedModes: start")
+    from service_tests import standard_modes
+    modesTest = standard_modes.StandardModesTest(connection=connection, mavlinkDocs=mavlinkDocs, libmav_message_set = message_set, own_system_id=own_mavlink_ids["system_id"], own_component_id=own_mavlink_ids["component_id"])
+    modesTest.getSupportedModes()
 
 
 # The code that does stuff
-
-
 
 # Start with wait after connecting to accumulate default_streamed messages.
 accumulate_time = 10
@@ -851,10 +483,16 @@ msgInfo.populateMessageInfo()
 # Todo add enough info to determine what is really streamed and what is not.
 print("Getting autopilot version ... - 5s")
 
+# Library for sending commands
+from tools import command_sender
+
 targetSystem = 1
 targetComponent = message_set.enum("MAV_COMP_ID_AUTOPILOT1") # TODO We should get from our connection.
 request_message_id = message_set.id_for_message('AUTOPILOT_VERSION')
-sendCommandRequestMessageNonBlocking(connection=connection, target_system=targetSystem, target_component=targetComponent, target_message_id=request_message_id, index_id=0)
+commander = command_sender.CommandSender(connection=connection, mavlinkDocs=mavlinkDocs, libmav_message_set = message_set, own_system_id=own_mavlink_ids["system_id"], own_component_id=own_mavlink_ids["component_id"])
+
+commander.sendCommandRequestMessageNonBlocking(target_system=targetSystem, target_component=targetComponent, request_message_id=request_message_id)
+
 time.sleep(3)
 
 
@@ -863,25 +501,21 @@ time.sleep(3)
 print("end first part")
 
 ## Send all commands (to test ACKS)
-sendAllCommands()
+#sendAllCommands()
 # TODO see if we get ack back for all the original messages.
 
+getSupportedModes()
 
+# The code that does stuff
 
 #pprint.pprint(messageAccumulator)
 
 # Testing streaming of battery messages
-request_message_id = message_set.id_for_message('BATTERY_STATUS')
-sendCommandMessageIntervalNonBlocking(connection=connection, target_system=targetSystem, target_component=targetComponent, target_message_id=request_message_id, interval=0)
-time.sleep(15)
+#request_message_id = message_set.id_for_message('BATTERY_STATUS')
+#sendCommandMessageIntervalNonBlocking(connection=connection, target_system=targetSystem, target_component=targetComponent, target_message_id=request_message_id, interval=0)
+#time.sleep(15)
 
 #sendTestCommands()
-
-if ackWaiting:
-    print(ackWaiting)
-
-
-
 
 
 
@@ -890,10 +524,8 @@ print("complete")
 
 #print(msgInfo.__identity)
 
-pprint.pprint(msgInfo.getMessageInfo())
-pprint.pprint(msgInfo.getCommandSupportInfoSorted())
+#pprint.pprint(msgInfo.getMessageInfo())
+#pprint.pprint(msgInfo.getCommandSupportInfoSorted())
 
 #pprint.pprint(msgInfo.getCommandInfo())
-
-
 #pprint.pprint(messageInfo)
