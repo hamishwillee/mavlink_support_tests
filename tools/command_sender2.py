@@ -22,15 +22,16 @@ def inspect_object(object):
 
 
 class CommandSender:
-    def __init__(self, connection, mavlinkDocs, libmav_message_set, own_system_id, own_component_id):
+    def __init__(self, sender, ackCallback, libmav_message_set, own_system_id, own_component_id):
         print("debug: CommandSender.__init__()")
-        self.connection = connection
+        #self.channel = channel
+        self.connection = sender
         self.docs = mavlinkDocs
         self.message_set = libmav_message_set
         self.own_system_id = own_system_id # The system ID of this system running the tests/sending commands
         self.own_component_id = own_component_id  # The component ID of this system running the tests/sending commands
         print("1debug: CommandSender.__init__()")
-        self._command_ack_callback_handle = self.connection.add_message_callback(se lf.ackArrived) #This is the problem. Probably can't rely on message callbacks like this. Will need requester.
+        self._command_ack_callback_handle = self.connection.add_message_callback(self.ackArrived) #This is the problem. Probably can't rely on message callbacks like this. Will need requester.
         print("2debug: CommandSender.__init__()")
         #dict of command acks we are waiting on + the time when sent
         self.ackWaiting = dict()

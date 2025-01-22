@@ -11,7 +11,7 @@ import threading
 import time
 
 # Library for sending commands
-from tools import command_sender
+#from tools import command_sender
 
 
 KUseLibMAV = True
@@ -76,9 +76,8 @@ class Channel:
     The channel is supposed to forward messages between interfaces, if appropriate.
     Given a channel it looks for MAV component heartbeats, and creates mav component objects that you can monitor.
     """
-    def __init__(self, mavlinkDocs, libmav_message_set, address=None, port=None, udp_client=True, string=None, newMavCallback=None, library='libmav'):
+    def __init__(self, mavlinkDocs, address=None, port=None, udp_client=True, string=None, newMavCallback=None, library='libmav'):
         self.docs = mavlinkDocs
-        self.libmav_message_set = libmav_message_set
         self.string = string
         self.address= address
         self.port = int(port)
@@ -98,16 +97,16 @@ class Channel:
         if 'libmav' == library:
             if udp_client:
                 #self.message_set = libmav_message_set
-                self.message_set = libmav.MessageSet('./mavlink/message_definitions/v1.0/development.xml') # make settable with some default
+                self._message_set = libmav.MessageSet('./mavlink/message_definitions/v1.0/development.xml') # make settable with some default
 
                 #Create a heartbeat message
-                heartbeat_message = self.message_set.create('HEARTBEAT')
+                heartbeat_message = self._message_set.create('HEARTBEAT')
                 heartbeat_dict = {
-                    "type": self.message_set.enum("MAV_TYPE_GCS"),
-                    "autopilot": self.message_set.enum("MAV_AUTOPILOT_INVALID"),
+                    "type": self._message_set.enum("MAV_TYPE_GCS"),
+                    "autopilot": self._message_set.enum("MAV_AUTOPILOT_INVALID"),
                     "base_mode": 0,
                     "custom_mode": 0,
-                    "system_status": self.message_set.enum("MAV_STATE_ACTIVE"),
+                    "system_status": self._message_set.enum("MAV_STATE_ACTIVE"),
                     "mavlink_version": 2,
                 }
 
@@ -118,7 +117,7 @@ class Channel:
             else:
                 raise ValueError("Wrong client ")
 
-            self.conn_runtime = libmav.NetworkRuntime(libmav.Identifier(own_mavlink_ids["system_id"], own_mavlink_ids["component_id"]), self.message_set, heartbeat_message, self.conn_physical)
+            self.conn_runtime = libmav.NetworkRuntime(libmav.Identifier(own_mavlink_ids["system_id"], own_mavlink_ids["component_id"]), self._message_set, heartbeat_message, self.conn_physical)
             print("waiting for connection")
             self.connection = self.conn_runtime.await_connection(5000)
             self._all_messages_callback_handle = self.connection.add_message_callback(self.messageInLibmav)
@@ -132,10 +131,12 @@ class Channel:
             raise ValueError("Only libmav supported a connection library")
 
 
-
         # Check what is connected
         self.connection_thread = threading.Thread(target=self.check_connections, daemon=True) #thread dies when main thread dies
         self.connection_thread.start()
+
+        # runtest
+        self.tests()
 
     def check_connections(self):
         """
@@ -265,6 +266,84 @@ class Channel:
         # Look for heartbeats and high latency 2 in order to identify new mav systems.
 
 
+    def createMessage(self, name):
+        """Creates a dict for a message based on its name
+
+        Args:
+            name (dict): This is the name of a message.
+        """
+        print(f"Debug: channel:createMessage: msg - {name}")
+        messageDoc = self.docs.getMessage(name=name)
+        #pprint.pprint(messageDoc)
+        message = {"_name": messageDoc['name'], "_id": messageDoc['id']  }
+        for field in messageDoc['fields']:
+            value = 0
+            if field['default'] is not None:
+                value = field['default']
+            elif field['type'].startswith("uint") or field['type'].startswith("int"):
+                value = 0
+            elif field['type'] == "float":
+                value = 0.0
+            else:
+                print(f"Channel:createMessage: unexpected field type: {field['type']}")
+
+            message[field['name']]=value
+        return message
+
+
+
+    def sendMessage(self, msg, target_system=0, target_component=0):
+        """Generic message sender, takes a message in the dict format
+
+        Args:
+            msg (dict): This is a message as a python dict, with header info, if any in _header.
+        """
+        print(f"Debug: channel:sendMessage: msg - {msg['_name']}")
+        pprint.pprint(msg)
+
+
+        # TODO check message is inside allowed max, min etc.
+        # TODO check message is not deprecated or WIP - add warning
+
+        if 'libmav' == self.library:
+            message = self._message_set.create(msg['_name'])
+            pprint.pprint(message.to_dict())
+
+            # Populate the libmav message type with the generic message dict.
+            # Don't bother overwriting the name or id
+            # Use specified target system/component if non-broadcast in message, but overwrite if method sets them.
+            for key, value in msg.items():
+                print(f"key: {key}, value: {value}")
+                if key.startswith('_'):
+                    continue
+                message[key]=value
+            if 'target_system' in msg and not target_system == 0: # Use function specified value except for broadcast.
+                message['target_system']=target_system
+            if 'target_component' in msg and not target_component == 0:
+                message['target_system']=target_component
+            pprint.pprint(message.to_dict())
+            TODO actually send the message
+
+        else:
+            print(f"Only libmav supported for sending")
+
+    def tests(self):
+        """
+        A test
+        """
+
+        # create a message
+        message = self.createMessage("COMMAND_LONG")
+        #print(f"DEBUG:tests:msg: {message}")
+        pprint.pprint(message)
+
+        self.sendMessage(message)
+
+        exitd
+
+
+
+
 class MAVComponent:
     """
     A channel is a single connection to a remote system or network,
@@ -283,13 +362,28 @@ class MAVComponent:
         self._last_heartbeat = None
         self.callback = None
 
+        # Add callback to add message watcher
+        self.messageWatchers = dict()
+        self.countWatchers = 0
+
+        """
+        def someoldcrap(msg):
+            print(f"some_old_cap: {msg}")
+
+        def allmessages(msg):
+            print(f"ALLMESSAGES: {msg}")
+
+
+        #self.addMessageCallbackAll(someoldcrap, message="ATTITUDE")
+        #self.addMessageCallbackAll(someoldcrap)
+        """
         ## Command sender. Not at all generic.
-        self.command_sender = command_sender.CommandSender(connection=self.channel.connection, mavlinkDocs=self.channel.docs, libmav_message_set = self.channel.libmav_message_set, own_system_id=own_mavlink_ids["system_id"], own_component_id=own_mavlink_ids["component_id"])
+        #self.command_sender = command_sender.CommandSender(connection=self.channel.connection, mavlinkDocs=self.channel.docs, libmav_message_set = self.channel.libmav_message_set, #own_system_id=own_mavlink_ids["system_id"], own_component_id=own_mavlink_ids["component_id"])
 
         # Test code
-        request_message_id =  self.channel.libmav_message_set.id_for_message('AUTOPILOT_VERSION') # this could be from docs - that is generic.
-        printf(f"request_message_id: {request_message_id}")
-        self.command_sender.sendCommandRequestMessageNonBlocking(target_system=self.system_id, target_component=self.component_id, request_message_id=request_message_id)
+        # request_message_id =  self.channel.libmav_message_set.id_for_message('AUTOPILOT_VERSION') # this could be from docs - that is generic.
+        # printf(f"request_message_id: {request_message_id}")
+        # self.command_sender.sendCommandRequestMessageNonBlocking(target_system=self.system_id, target_component=self.component_id, request_message_id=request_message_id)
 
 
     def messageInComponent(self, msg):
@@ -308,9 +402,22 @@ class MAVComponent:
                 self.connectionChanged(True)
                 self.connected=True
 
-        ## TODO ADD HANDLER TO GET INFO ABOUT TYPE OF VEHICLE
-
         ## TODO ADD handler to register your own code to handle messages.
+        for id, callbackentry in self.messageWatchers.items():
+            try:
+                if 'message' in callbackentry:
+                    filterMessage = callbackentry["message"]
+
+                    if msg['_name']==filterMessage: # TODO check doesn't trigger with no message.
+                        print(msg['_name'])
+                        callbackentry["callback"](msg)
+                else:
+                    print("All MESSAGES")
+                    print(msg['_name'])
+                    callbackentry["callback"](msg)
+            except e:
+                print(f"id: {id}, watcher: {callbackentry}")
+                print(e)
 
     def connectionChanged(self, connecting):
         """Callback for libmav whenever a new message arrives on channel.
@@ -328,6 +435,21 @@ class MAVComponent:
         """
         self.callback = callback
 
+    def addMessageCallbackAll(self, callback, message=None):
+        """Adds a callback that gets messages arriving at this vehicle
+        """
+        print("debug:addMessageCallbackAll ")
+        self.countWatchers += 1
+        callbackentry = { 'callback' : callback }
+        if message:
+            callbackentry['message'] = message
+        self.messageWatchers[self.countWatchers] = callbackentry
+        return self.countWatchers
+
+    def deleteMessageCallbackAll(self, callback_id):
+        """Allows you to delete a callback given its id
+        """
+        del self.messageWatchers[callback_id]
 
 
 class MAVAutopilotComponent(MAVComponent):
@@ -342,8 +464,8 @@ class MAVAutopilotComponent(MAVComponent):
         """Request autopilot version
         """
         print("debug: MAVComponent: requestAutopilotVersion")
-        request_message_id = libmav_message_set.id_for_message('AUTOPILOT_VERSION') # this could be from docs - that is generic.
-        self.command_sender.sendCommandRequestMessageNonBlocking(target_system=self.system_id, target_component=self.component_id, request_message_id=request_message_id)
+        #request_message_id = libmav_message_set.id_for_message('AUTOPILOT_VERSION') # this could be from docs - that is generic.
+        #self.command_sender.sendCommandRequestMessageNonBlocking(target_system=self.system_id, target_component=self.component_id, request_message_id=request_message_id)
 
         """
         targetSystem = 1
