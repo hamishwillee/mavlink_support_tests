@@ -30,7 +30,7 @@ class CommandSender:
         self.own_system_id = own_system_id # The system ID of this system running the tests/sending commands
         self.own_component_id = own_component_id  # The component ID of this system running the tests/sending commands
         print("1debug: CommandSender.__init__()")
-        self._command_ack_callback_handle = self.connection.add_message_callback(se lf.ackArrived) #This is the problem. Probably can't rely on message callbacks like this. Will need requester.
+        self._command_ack_callback_handle = self.connection.add_message_callback(self.ackArrived) #This is the problem. Probably can't rely on message callbacks like this. Will need requester.
         print("2debug: CommandSender.__init__()")
         #dict of command acks we are waiting on + the time when sent
         self.ackWaiting = dict()
@@ -237,6 +237,37 @@ class CommandSender:
         """
         print("REQUEST MESSAGE FUNC")
         self.commandSenderNonBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_REQUEST_MESSAGE', target_system=target_system, target_component=target_component, param1=request_message_id, param2=index_id, param3=param3, param4=param4, param5=param5, param6=param6, param7=param7)
+
+
+    def sendCommandSetGlobalOriginNonBlocking(self, target_system, target_component, lat, lon, alt, connection=None, senderType=1):
+        """
+        Send MAV_CMD_DO_SET_GLOBAL_ORIGIN
+
+        Args
+            target_system (int): MAVLink system ID
+            target_component (int): MAVLink component ID
+            connection: Connection object for sending. Default None means "self.connection"
+            senderType (int): 0 for command_long , 1 for command_int (default).
+            lat: latitude 1E7 (WGS84) param 5
+            long: longitude 1E7  (WGS84) param 6
+            alt: m MSL param 7
+
+        """
+        print("SetGlobalOrigin - MAV_CMD_DO_SET_GLOBAL_ORIGIN")
+        self.commandSenderNonBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_DO_SET_GLOBAL_ORIGIN', target_system=target_system, target_component=target_component, param1=0, param2=0, param3=0, param4=0, param5=lat, param6=lon, param7=alt)
+        # Should get back ACK and GPS_GLOBAL_ORIGIN
+
+
+    def sendAllCommands(self, target_system, target_component, connection=None, senderType=0):
+        # Sends all commands, one after another with a space between. We're just trying to work out if supported or not.
+        # Get all commandds
+        #targetSystem = 1
+        #targetComponent = message_set.enum("MAV_COMP_ID_AUTOPILOT1")
+        allCommands = self.docs.getCommands()
+        for name in allCommands.keys():
+            print(f"Sending: {name}")
+            self.commandSenderNonBlocking(connection=connection, senderType=senderType, commandName=name, target_system=target_system, target_component=target_component, param1=0, param2=0, param3=0, param4=0, param5=0, param6=0, param7=0)
+            time.sleep(1)
 
 
     def sendCommandArm(self, target_system, target_component, arm = 1, connection=None, senderType=0):

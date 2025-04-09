@@ -341,8 +341,6 @@ class MAVLinkSupportInfo:
             return lastFrequency
 
 
-
-
     def getMessageEstHz(self, msgName):
         """
         Gets the std and av Hz of message as an object { std, av }, or None if not streamed
@@ -446,20 +444,6 @@ all_messages_callback_handle = connection.add_message_callback(msgInfo.messageAr
 
 
 
-"""
-# Do this using command sender in its own test
-def sendAllCommands():
-    # Sends all commands, one after another with a space between. We're just trying to work out if supported or not.
-    # Get all commandds
-    targetSystem = 1
-    targetComponent = message_set.enum("MAV_COMP_ID_AUTOPILOT1")
-    allCommands = mavlinkDocs.getCommands()
-    for name in allCommands.keys():
-        print(f"Sending: {name}")
-        commandSenderNonBlocking(connection=connection, commandName=name, target_system=targetSystem, target_component=targetComponent)
-        time.sleep(1)
-"""
-
 def getSupportedModes():
     print("debug: getSupportedModes: start")
     from service_tests import standard_modes
@@ -478,6 +462,8 @@ msgInfo.populateMessageInfo()
 
 
 
+
+
 # request more identity info
 # Note, done after the accumulator part, because it isn't streamed.
 # Todo add enough info to determine what is really streamed and what is not.
@@ -493,6 +479,10 @@ commander = command_sender.CommandSender(connection=connection, mavlinkDocs=mavl
 
 commander.sendCommandRequestMessageNonBlocking(target_system=targetSystem, target_component=targetComponent, request_message_id=request_message_id)
 
+# Test send
+
+
+
 time.sleep(3)
 
 
@@ -500,11 +490,18 @@ time.sleep(3)
 # connection.remove_message_callback(all_messages_callback_handle) # leave running - is handy
 print("end first part")
 
-## Send all commands (to test ACKS)
-#sendAllCommands()
-# TODO see if we get ack back for all the original messages.
 
-getSupportedModes()
+
+# Try send MAV_CMD_DO_SET_GLOBAL_ORIGIN
+commander.sendCommandSetGlobalOriginNonBlocking(target_system=targetSystem, target_component=targetComponent, lat=3, lon=3, alt=4)
+# Want to get back GPS_GLOBAL_ORIGIN
+
+# Test send
+time.sleep(3)
+
+
+
+getSupportedModes() # This works
 
 # The code that does stuff
 
@@ -514,6 +511,12 @@ getSupportedModes()
 #request_message_id = message_set.id_for_message('BATTERY_STATUS')
 #sendCommandMessageIntervalNonBlocking(connection=connection, target_system=targetSystem, target_component=targetComponent, target_message_id=request_message_id, interval=0)
 #time.sleep(15)
+
+
+
+## Send all commands (to test ACKS)
+commander.sendAllCommands(target_system=targetSystem, target_component=targetComponent)
+# TODO see if we get ack back for all the original messages.
 
 #sendTestCommands()
 
@@ -525,7 +528,7 @@ print("complete")
 #print(msgInfo.__identity)
 
 #pprint.pprint(msgInfo.getMessageInfo())
-#pprint.pprint(msgInfo.getCommandSupportInfoSorted())
+pprint.pprint(msgInfo.getCommandSupportInfoSorted())
 
 #pprint.pprint(msgInfo.getCommandInfo())
 #pprint.pprint(messageInfo)
