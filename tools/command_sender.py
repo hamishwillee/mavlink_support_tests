@@ -117,15 +117,11 @@ class CommandSender:
         message_dict = msg.to_dict()
 
         # Reject any messages intended for other systems (not broadcast and has non-matching id)
-        if 'target_system' not in message_dict:
-            # broadcast system message with no target id
-            pass
-        elif message_dict['target_system'] == 0:
-            # broadcast system message.
-            pass
-        elif message_dict['target_system'] != self.own_system_id:
+        # TODO maybe also reject for other components if targetted.
+        target_system = message_dict.get('target_system', 0)
+        if target_system != 0 and target_system != self.own_system_id:
             print(
-                f"not matching system: {message_dict['target_system']}, {self.own_system_id} ")
+                f"not matching system: {target_system}, {self.own_system_id} ")
             return
 
         # Reject any messages intended for other component (not broadcast and has non-matching id)

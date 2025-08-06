@@ -6,6 +6,7 @@ Outputs useful lists like "commands that didn't response with whether they are s
 """
 
 import time
+import pprint
 from tools.connection import MAVConnection
 
 # connectionType = 'px4wsl2_companion_udp_client'
@@ -46,7 +47,11 @@ if testGetSupportedModes2:
     modethingy = mode_manager.StandardModes(connection=connection, mavlinkDocs=mavlinkDocs,
                                             libmav_message_set=message_set, target_system=targetSystem, target_component=targetComponent)
     modethingy.requestModes()
-    time.sleep(15)
+    time.sleep(20)
 
-# time.sleep(15)
+
+
+time.sleep(20)
 print("complete")
+
+pprint.pprint(mavConnection.components['1_1']._accumulator)
