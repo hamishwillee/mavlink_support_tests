@@ -1,9 +1,7 @@
 from .command_sender import CommandSender
-import time
-import threading
+#import time
+#import threading
 import pprint
-
-
 
 class MAVComponent:
     def __init__(self, mav_connection, target_system_id, target_component_id, mav_type, autopilot):
@@ -30,8 +28,6 @@ class MAVComponent:
         self.mav_type = mav_type
         self.autopilot = autopilot
         self.msg_autopilot_version = None
-
-
 
         self.commander = CommandSender(mav_connection=self.mav_connection)
         print(
@@ -71,7 +67,6 @@ class MAVComponent:
         return None  # Not supported
 
 
-
     def _handle_autopilot_version(self, message_dict):
         """
         Request the AUTOPILOT_VERSION from this component by sending MAV_CMD_REQUEST_MESSAGE.
@@ -109,18 +104,30 @@ class MAVComponent:
 
         # TODO store the other values in AUTOPILOT_VERSION message
 
+    def msgNotForComponent(self, msg_dict):
+        # print(f"Debug: MAVComponent: filterForComponent: {msg}")
+
+        if not isinstance(msg_dict, dict):
+            print(f"WARNING: MAVComponent: filterForComponent: Not a dict: {msg}")
+            exit()
+
+        # Reject any messages intended for other systems (not broadcast and has non-matching id)
+        target_system = msg_dict.get('target_system', 0)
+        if target_system != 0 and target_system != self.target_system_id:
+            print(f"not matching system: {target_system}, {self.target_system_id} ")
+            return True
+        return False
+
+
     def _messageArrived(self, msg):
         # print(f"Debug: MAVComponent: messageArrived: {msg.name}")
         message_dict = msg.to_dict()
 
         # Reject any messages intended for other systems (not broadcast and has non-matching id)
-        target_system = message_dict.get('target_system', 0)
-        if target_system != 0 and target_system != self.target_system_id:
-            print(
-                f"not matching system: {target_system}, {self.target_system_id} ")
+        if self.msgNotForComponent(message_dict):
             return
 
-        self.messageAccumulator(msg.name)  # Log the message
+        #self.messageAccumulator(msg.name)  # Log the message
 
         if 'AUTOPILOT_VERSION' in msg.name:
             print(f"Debug: MAVComponent: messageArrived: {msg.name}")

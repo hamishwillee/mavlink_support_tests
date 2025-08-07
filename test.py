@@ -17,16 +17,17 @@ connectionType = 'px4wsl2_companion_udp_server'
 
 mavConnection = MAVConnection(connection_type=connectionType)
 
-time.sleep(10)
-
+time.sleep(5)
 
 print(mavConnection.components)
-# mavConnection.components['1_1'].startAccumulating()
+
 
 
 # time.sleep(10)
 
 # The code that does stuff
+
+testGetAllMessages = True  #
 
 testGetSupportedModes = False  # depr
 testGetSupportedModes2 = False
@@ -34,8 +35,15 @@ printMessageAcc = False
 testStreamingBatteryMessages = False
 testSendAllCommands = False
 testMAV_CMD_DO_SET_MODE = False
-testMAV_CMD_DO_SET_GLOBAL_ORIGIN = True
+testMAV_CMD_DO_SET_GLOBAL_ORIGIN = False
 testMAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN = False
+
+if testGetAllMessages:
+    print("TEST: testGetAllMessages")
+    from tests.all_messages import MessagesTest
+    messageTest = MessagesTest(mav_component=mavConnection.components['1_1']) # Probably need to think about checking type etc for this. Good enough for now.
+    time.sleep(20)
+    pprint.pprint(messageTest.report())
 
 
 if testGetSupportedModes2:
@@ -51,7 +59,7 @@ if testGetSupportedModes2:
 
 
 
-time.sleep(20)
+time.sleep(10)
 print("complete")
 
-pprint.pprint(mavConnection.components['1_1']._accumulator)
+#pprint.pprint(mavConnection.components['1_1']._accumulator)
