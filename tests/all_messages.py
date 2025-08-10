@@ -120,9 +120,6 @@ class MessagesTest():
             # Across the whole queue
             self._accumulator[messageName]["hz_avg"] = hz_avg
 
-            # 1, 2, 3, 4, 5, 10, 20, 30, 50
-            # 3if hz_avg_rnd == 10 and count > 10:
-            #    self._accumulator[messageName]["Hz"] = 5
 
             # update the last timestamp
             self._accumulator[messageName]["last_timestamp"] = time.monotonic()

@@ -55,6 +55,16 @@ class MAVConnection:
 
         heartbeat_message.set_from_dict(heartbeat_dict)
 
+
+
+        # TODO: Convert all of these into a connection string rather than taking from
+        if self.connection_type == 'px4wsl2_companion_udp_client':
+            connection_address = '172.19.48.140'
+            # Onboard, data rate: 4000000 B/s on udp port 14580 remote port 14540
+            connection_port = 14580
+            conn_physical = libmav.UDPClient(
+                connection_address, connection_port)
+
         # TODO: Convert all of these into a connection string rather than taking from
         if self.connection_type == 'px4wsl2_companion_udp_client':
             connection_address = '172.19.48.140'
@@ -82,6 +92,22 @@ class MAVConnection:
             # Onboard, data rate: 4000000 B/s on udp port 14580 remote port 14540
             connection_port = 14540
             conn_physical = libmav.UDPServer(connection_port)
+
+        # Normal, data rate: 4000000 B/s on udp port 18570 remote port 14550
+        if self.connection_type == 'ardupilot_wsl2_companion_udp_server':
+            connection_address = '127.0.0.1'
+            # Onboard, data rate: 4000000 B/s on udp port 14580 remote port 14540
+            connection_port = 14540
+            conn_physical = libmav.UDPClient(
+                connection_address, connection_port)
+
+        # Normal, data rate: 4000000 B/s on udp port 18570 remote port 14550
+        if self.connection_type == 'ardupilot_wsl2_companion_tcp_server':
+            connection_address = '127.0.0.1'
+            # Onboard, data rate: 4000000 B/s on udp port 14580 remote port 14540
+            connection_port = 5760
+            conn_physical = libmav.TCPClient(         connection_address, connection_port)
+
 
         self.conn_runtime = libmav.NetworkRuntime(libmav.Identifier(
             self.own_system_id, self.own_component_id), self.message_set, heartbeat_message, conn_physical)

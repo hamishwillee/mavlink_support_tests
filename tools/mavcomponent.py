@@ -1,7 +1,8 @@
 from .command_sender import CommandSender
-#import time
-#import threading
+# import time
+# import threading
 import pprint
+
 
 class MAVComponent:
     def __init__(self, mav_connection, target_system_id, target_component_id, mav_type, autopilot):
@@ -66,7 +67,6 @@ class MAVComponent:
             return (self.msg_autopilot_version['capabilities'] & capability) != 0
         return None  # Not supported
 
-
     def _handle_autopilot_version(self, message_dict):
         """
         Request the AUTOPILOT_VERSION from this component by sending MAV_CMD_REQUEST_MESSAGE.
@@ -75,28 +75,73 @@ class MAVComponent:
         if not self.msg_autopilot_version:
             self.msg_autopilot_version = dict()
 
+        def parse_board_version(board_version):
+            """
+            Parse a AUTOPILOT_VERSION.board_version (uint32) into:
+            - board_type  : top 16 bits (bits 31..16)
+            - board_rev   : middle byte (bits 15..8) — maybe revision / minor
+            - silicon_id  : low byte (bits 7..0)
+            Returns a dict.
+            """
+            board_type = (board_version >> 16) & 0xFFFF   # top 16 bits
+            board_rev = (board_version >> 8) & 0xFF     # middle 8 bits
+            silicon_id = board_version & 0xFF     # low 8 bits
+
+            #TODO: The board type comes from https://github.com/PX4/PX4-Bootloader/blob/main/board_types.txt and Ardupilot's board_version.txt
+            # Need to map these to a human readable name.
+            return {
+                "board_type": board_type,
+                "board_revision": board_rev,
+                "silicon_id": silicon_id,
+            }
+
+        def getVersionString(version):
+            """
+            Convert a version number encoded in uint32 to a string.
+            """
+            major = (version >> 24) & 0xFF
+            minor = (version >> 16) & 0xFF
+            patch = (version >> 8) & 0xFF
+            type_ = version & 0xFF
+            # Convert type to string using hardcoded values from MAVLink docs.
+            if type_ == 0:
+                type_ = 'MAV_FIRMWARE_VERSION_TYPE_DEV'
+            elif type_ == 64:
+                type_ = 'MAV_FIRMWARE_VERSION_TYPE_ALPHA'
+            elif type_ == 128:
+                type_ = 'MAV_FIRMWARE_VERSION_TYPE_BETA'
+            elif type_ == 192:
+                type_ = 'MAV_FIRMWARE_VERSION_TYPE_RC'
+            elif type_ == 255:
+                type_ = 'MAV_FIRMWARE_VERSION_TYPE_OFFICIAL'
+            else:
+                type_ = 'UNKNOWN'
+                print(
+                    f"WARNING: Unknown MAV_FIRMWARE_VERSION_TYPE: {type_}, version: {version}")
+            return f"{major}.{minor}.{patch} ({type_})"
+
         # TODO Need to go do all of these and extract info
         self.msg_autopilot_version['capabilities'] = message_dict['capabilities']
         # self.isCapabilitySupported('MAV_PROTOCOL_CAPABILITY_COMMAND_INT')
 
-        self.msg_autopilot_version['flight_sw_version'] = message_dict['flight_sw_version']
-        major_version = (
-            message_dict['middleware_sw_version'] >> (8 * 3)) & 0xFF
-        minor_version = (
-            message_dict['middleware_sw_version'] >> (8 * 2)) & 0xFF
-        patch_version = (
-            message_dict['middleware_sw_version'] >> (8 * 1)) & 0xF
-        # Done
-        self.msg_autopilot_version[
-            'middleware_sw_version'] = f"{major_version}.{minor_version}.{patch_version}"
+        self.msg_autopilot_version['flight_sw_version_str'] = getVersionString(
+            message_dict['flight_sw_version'])
+        self.msg_autopilot_version['middleware_sw_version'] = getVersionString(
+            message_dict['middleware_sw_version'])
+        self.msg_autopilot_version['os_sw_version'] = getVersionString(
+            message_dict['os_sw_version'])
+
+        self.msg_autopilot_version['board_version'] = parse_board_version(
+            message_dict['board_version'])
+        # Custom - 8 bytes of git hash or similar according to docs.
+        # TODO check out what PX4 and Ardupilot do with this.
         self.msg_autopilot_version['flight_custom_version'] = message_dict['flight_custom_version']
-        self.msg_autopilot_version['middleware_custom_version'] = message_dict['middleware_custom_version']
         self.msg_autopilot_version['os_custom_version'] = message_dict['os_custom_version']
-        self.msg_autopilot_version['os_sw_version'] = message_dict['os_sw_version']
-        # comes from https://github.com/PX4/PX4-Bootloader/blob/main/board_types.txt and Ardupilot's board_version.txt
-        self.msg_autopilot_version['board_version'] = message_dict['board_version']
+        self.msg_autopilot_version['middleware_custom_version'] = message_dict['middleware_custom_version']
+        # TODO work out how to parse these. I believe they are FC sepcific
         self.msg_autopilot_version['vendor_id'] = message_dict['vendor_id']
         self.msg_autopilot_version['product_id'] = message_dict['product_id']
+
         self.msg_autopilot_version['uid'] = message_dict['uid']
         self.msg_autopilot_version['uid2'] = message_dict['uid2']
 
@@ -108,16 +153,16 @@ class MAVComponent:
         # print(f"Debug: MAVComponent: filterForComponent: {msg}")
 
         if not isinstance(msg_dict, dict):
-            print(f"WARNING: MAVComponent: filterForComponent: Not a dict: {msg}")
+            print(
+                f"WARNING: MAVComponent: filterForComponent: Not a dict: {msg}")
             exit()
 
         # Reject any messages intended for other systems (not broadcast and has non-matching id)
         target_system = msg_dict.get('target_system', 0)
         if target_system != 0 and target_system != self.target_system_id:
-            print(f"not matching system: {target_system}, {self.target_system_id} ")
-            return True
+            # print(f"not matching system: {target_system}, {self.target_system_id} ")
+            return True  # Systems don't match
         return False
-
 
     def _messageArrived(self, msg):
         # print(f"Debug: MAVComponent: messageArrived: {msg.name}")
@@ -127,7 +172,7 @@ class MAVComponent:
         if self.msgNotForComponent(message_dict):
             return
 
-        #self.messageAccumulator(msg.name)  # Log the message
+        # self.messageAccumulator(msg.name)  # Log the message
 
         if 'AUTOPILOT_VERSION' in msg.name:
             print(f"Debug: MAVComponent: messageArrived: {msg.name}")

@@ -9,18 +9,18 @@ import time
 import pprint
 from tools.connection import MAVConnection
 
-# connectionType = 'px4wsl2_companion_udp_client'
-connectionType = 'px4wsl2_companion_udp_server'
-# connectionType = 'px4wsl2_normal_udp_client'
+#connectionType = 'px4wsl2_companion_udp_client'
+connectionType = 'px4wsl2_companion_udp_server' # Works PX4
+#connectionType = 'px4wsl2_normal_udp_client'
 # connectionType = 'px4wsl2_normal_udp_server'
-
+#connectionType = 'ardupilot_wsl2_companion_udp_server'
+#connectionType = 'ardupilot_wsl2_companion_tcp_server'
 
 mavConnection = MAVConnection(connection_type=connectionType)
 
 time.sleep(5)
 
 print(mavConnection.components)
-
 
 
 # time.sleep(10)
