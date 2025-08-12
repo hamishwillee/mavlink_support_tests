@@ -43,8 +43,10 @@ class XMLDialectInfo:
         print(type(XMLFiles))
 
         self.files = XMLFiles(dialect=self.dialect, source_dir='./mavlink/message_definitions/v1.0/')
-        #print(type(self.files))
+        print("DEBUG HERE SELF")
+        print(type(self.files))
         self.dict=self.convert_to_dict(self.files)
+        print(type(self.dict))
 
     def convert_to_dict(self, obj):
         if isinstance(obj, dict):
@@ -111,6 +113,7 @@ class XMLDialectInfo:
         return enum_entries_by_id_dict[id]['name']
 
     def getCommands(self):
+        print("debug: mavdocs.py: getCommands()")
         return self.dict['xml_dialects'][self.dialect]['commands']
 
     def getCommand(self, name):

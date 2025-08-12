@@ -15,7 +15,7 @@ git clone https://github.com/mavlink/mavlink.git --recursive #note, needed for g
 ```
 
 
-Then modify mavlink\doc\mavlink_xml_to_markdown.py to add this up the top
+Then modify mavlink\doc\mavlink_xml_to_markdown.py to add this up the top (note the backup folder has a version as example
 
 ```
 class CommonMethods:
