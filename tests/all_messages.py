@@ -126,9 +126,15 @@ class MessagesTest():
 
 
     def report(self):
-        # This is data so far
+        # Adds report with a key to the component._report dict.
         messages = dict()
         for messageName in self._accumulator:
-            messages[messageName] = self._accumulator[messageName]["Hz"]
-        return messages
+            messages[messageName] = dict()
+            try:
+                messages[messageName]["rate"] = self._accumulator[messageName]["Hz"]
+            except:
+                messages[messageName]["rate"] = 0
+            messages[messageName]["xml"] = self.mav_component.docs.getMessage(name=messageName)["basename"]
+
+        self.mav_component._report['all_messages']=messages
 

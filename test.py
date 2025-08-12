@@ -43,7 +43,8 @@ if testGetAllMessages:
     from tests.all_messages import MessagesTest
     messageTest = MessagesTest(mav_component=mavConnection.components['1_1']) # Probably need to think about checking type etc for this. Good enough for now.
     time.sleep(20)
-    pprint.pprint(messageTest.report())
+    messageTest.report()
+    #pprint.pprint()
 
 
 if testGetSupportedModes2:
@@ -60,6 +61,7 @@ if testGetSupportedModes2:
 
 
 time.sleep(10)
+pprint.pprint(mavConnection.components['1_1'].report())
 print("complete")
 
 #pprint.pprint(mavConnection.components['1_1']._accumulator)

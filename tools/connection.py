@@ -95,18 +95,10 @@ class MAVConnection:
 
         # Normal, data rate: 4000000 B/s on udp port 18570 remote port 14550
         if self.connection_type == 'ardupilot_wsl2_companion_udp_server':
-            connection_address = '127.0.0.1'
+            # connection_address = '172.19.48.140'
             # Onboard, data rate: 4000000 B/s on udp port 14580 remote port 14540
-            connection_port = 14540
-            conn_physical = libmav.UDPClient(
-                connection_address, connection_port)
-
-        # Normal, data rate: 4000000 B/s on udp port 18570 remote port 14550
-        if self.connection_type == 'ardupilot_wsl2_companion_tcp_server':
-            connection_address = '127.0.0.1'
-            # Onboard, data rate: 4000000 B/s on udp port 14580 remote port 14540
-            connection_port = 5760
-            conn_physical = libmav.TCPClient(         connection_address, connection_port)
+            connection_port = 14550
+            conn_physical = libmav.UDPServer(connection_port)
 
 
         self.conn_runtime = libmav.NetworkRuntime(libmav.Identifier(

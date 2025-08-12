@@ -21,6 +21,7 @@ class MAVComponent:
 
         self.mav_connection = mav_connection
         # TODO check type of connection object. Leave if is wrong type.
+        self.docs = self.mav_connection.docs
         # System ID of drone this object is a proxy for (i.e. it is the target system ID for commands)
         self.target_system_id = target_system_id
 
@@ -29,6 +30,7 @@ class MAVComponent:
         self.mav_type = mav_type
         self.autopilot = autopilot
         self.msg_autopilot_version = None
+        self._report=dict()
 
         self.commander = CommandSender(mav_connection=self.mav_connection)
         print(
@@ -95,6 +97,20 @@ class MAVComponent:
                 "silicon_id": silicon_id,
             }
 
+        def getProtocolsSupported(capabilities):
+            """
+            Get supported capabilities.
+            TODO This is not generic, we create something to pass in bitmask, return values, then find match?
+            DOn't care for now. THis is standard so shouldn't change.
+            """
+            #print(self.docs.getEnum(name="MAV_PROTOCOL_CAPABILITY")["entries"])
+            protocols = dict()
+            for key, capability in self.docs.getEnum(name="MAV_PROTOCOL_CAPABILITY")["entries"].items():
+                supported = (capability['value'] & capabilities) != 0
+                #print(f"{key}: ({capability['value']}) {supported}")
+                protocols[key] = supported
+            return protocols
+
         def getVersionString(version):
             """
             Convert a version number encoded in uint32 to a string.
@@ -120,9 +136,15 @@ class MAVComponent:
                     f"WARNING: Unknown MAV_FIRMWARE_VERSION_TYPE: {type_}, version: {version}")
             return f"{major}.{minor}.{patch} ({type_})"
 
-        # TODO Need to go do all of these and extract info
-        self.msg_autopilot_version['capabilities'] = message_dict['capabilities']
-        # self.isCapabilitySupported('MAV_PROTOCOL_CAPABILITY_COMMAND_INT')
+        # These are ascii of bytes assuming 8 bytes of git hash.
+        # Might not be that since this is custom. But is what docs indicate
+        def customVersion(versionBytes):
+            is_all_zeros = all(byte == 0 for byte in versionBytes)
+            if is_all_zeros:
+                return None
+            return bytes(versionBytes).decode('ascii')
+
+        self.msg_autopilot_version['capabilities'] = getProtocolsSupported(message_dict['capabilities'])
 
         self.msg_autopilot_version['flight_sw_version_str'] = getVersionString(
             message_dict['flight_sw_version'])
@@ -133,17 +155,21 @@ class MAVComponent:
 
         self.msg_autopilot_version['board_version'] = parse_board_version(
             message_dict['board_version'])
-        # Custom - 8 bytes of git hash or similar according to docs.
-        # TODO check out what PX4 and Ardupilot do with this.
-        self.msg_autopilot_version['flight_custom_version'] = message_dict['flight_custom_version']
-        self.msg_autopilot_version['os_custom_version'] = message_dict['os_custom_version']
-        self.msg_autopilot_version['middleware_custom_version'] = message_dict['middleware_custom_version']
-        # TODO work out how to parse these. I believe they are FC sepcific
+
+
+        # These are ascii of bytes assuming 8 bytes of git hash or 0. Assuming mav docs are broadly used.
+        self.msg_autopilot_version['flight_custom_version'] = customVersion( message_dict['flight_custom_version'] )
+        self.msg_autopilot_version['os_custom_version'] = customVersion( message_dict['os_custom_version'] )
+        self.msg_autopilot_version['middleware_custom_version'] = customVersion( message_dict['middleware_custom_version'] )
+
+        # TODO work out how to parse these. I believe they are FC specific
         self.msg_autopilot_version['vendor_id'] = message_dict['vendor_id']
         self.msg_autopilot_version['product_id'] = message_dict['product_id']
 
         self.msg_autopilot_version['uid'] = message_dict['uid']
         self.msg_autopilot_version['uid2'] = message_dict['uid2']
+        is_all_zeros = all(byte == 0 for byte in message_dict['uid2'])
+        self.msg_autopilot_version['uid2'] = 0 if is_all_zeros else message_dict['uid2']
 
         pprint.pprint(self.msg_autopilot_version)
 
@@ -177,3 +203,9 @@ class MAVComponent:
         if 'AUTOPILOT_VERSION' in msg.name:
             print(f"Debug: MAVComponent: messageArrived: {msg.name}")
             self._handle_autopilot_version(message_dict)
+
+    def report(self):
+        self._report['mav_type'] = self.mav_type
+        self._report['autopilot'] = self.autopilot
+        self._report['autopilot_version'] = self.autopilot
+        return self._report
