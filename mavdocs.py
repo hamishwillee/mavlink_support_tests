@@ -53,8 +53,9 @@ class XMLDialectInfo:
             return {k: self.convert_to_dict(v) for k, v in obj.items()}
         elif isinstance(obj, list):
             return [self.convert_to_dict(item) for item in obj]
-        elif hasattr(obj, 'to_dict') and callable(getattr(obj, 'to_dict')):
-            return self.convert_to_dict(obj.to_dict())
+        # This converts mavlink XML doc objects (only) to dicts.
+        elif hasattr(obj, '__dict__') and obj.__class__.__module__ == "mavlink_xml_to_markdown":
+            return self.convert_to_dict(obj.__dict__)
         else:
             return obj
 
@@ -71,7 +72,7 @@ class XMLDialectInfo:
         if id is None and name is None:
             raise ValueError("Either id or name must be specified")
         if not id and not name:
-            raise ValueError("Onely one of id or name must be specified")
+            raise ValueError("Only one of id or name must be specified")
         if name:
             return self.dict['xml_dialects'][self.dialect]['messages'][name]
         if id:
