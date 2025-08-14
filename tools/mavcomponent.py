@@ -142,7 +142,13 @@ class MAVComponent:
             is_all_zeros = all(byte == 0 for byte in versionBytes)
             if is_all_zeros:
                 return None
-            return bytes(versionBytes).decode('ascii')
+            try:
+                decodeToAscii = bytes(versionBytes).decode('ascii')
+                return decodeToAscii
+            except UnicodeDecodeError:
+                # not converted (not ASCII github string)
+                pass
+            return versionBytes # not converted!
 
         self.msg_autopilot_version['capabilities'] = getProtocolsSupported(message_dict['capabilities'])
 
