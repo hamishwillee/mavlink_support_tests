@@ -32,7 +32,7 @@ class MAVComponent:
         self.msg_autopilot_version = None
         self._report=dict()
 
-        self.commander = CommandSender(mav_connection=self.mav_connection)
+        self.commander = CommandSender(mav_component=self)
         print(
             f"Debug: MAVComponent: Created commander with system_id={self.commander.own_system_id} component_id={self.commander.own_component_id}")
 
@@ -46,8 +46,8 @@ class MAVComponent:
         print("Debug: Requesting AUTOPILOT_VERSION from MAVLink system...")
         request_message_id = self.mav_connection.message_set.id_for_message(
             'AUTOPILOT_VERSION')
-        self.commander.sendCommandRequestMessageNonBlocking(
-            target_system=self.target_system_id, target_component=self.target_component_id, request_message_id=request_message_id)
+        #self.commander.sendCommandRequestMessageNonBlocking(target_system=self.target_system_id, target_component=self.target_component_id, request_message_id=request_message_id)
+        self.commander.sendCommandRequestMessageNonBlocking(request_message_id=request_message_id)
 
     def isCapabilitySupported(self, capability):
         # TODO: NOT DONE YET
@@ -136,9 +136,12 @@ class MAVComponent:
                     f"WARNING: Unknown MAV_FIRMWARE_VERSION_TYPE: {type_}, version: {version}")
             return f"{major}.{minor}.{patch} ({type_})"
 
-        # These are ascii of bytes assuming 8 bytes of git hash.
-        # Might not be that since this is custom. But is what docs indicate
+
         def customVersion(versionBytes):
+            """
+            XML indicates may be ascii of bytes assuming 8 bytes of git hash.
+            Might not be that since this is custom.
+            """
             is_all_zeros = all(byte == 0 for byte in versionBytes)
             if is_all_zeros:
                 return None

@@ -22,22 +22,22 @@ def inspect_object(object):
 
 
 class CommandSender:
-    def __init__(self, mav_connection):
+    def __init__(self, mav_component):
         print(
             f"debug: CommandSender.__init__")
-        self.mav_connection = mav_connection
-        self.connection = mav_connection.connection
-        self.docs = mav_connection.docs
-        self.message_set = mav_connection.message_set
+        self.mav_component = mav_component
+        self.mav_connection = self.mav_component.mav_connection
+        self.connection = self.mav_connection.connection
+        self.docs = self.mav_connection.docs
+        self.message_set = self.mav_connection.message_set
 
-        self.own_system_id = mav_connection.own_system_id
-        self.own_component_id = mav_connection.own_component_id
-        #self.target_system_id = target_system_id  # default to None
-        #self.target_component_id = target_component_id  # default to None
-        print("1debug: CommandSender.__init__()")
-        # This is the problem. Probably can't rely on message callbacks like this. Will need requester.
+        self.own_system_id = self.mav_connection.own_system_id
+        self.own_component_id = self.mav_connection.own_component_id
+        self.target_system_id = self.mav_component.target_system_id  # default to None
+        self.target_component_id = self.mav_component.target_component_id
+
         self.mav_connection.add_threaded_message_callback(self.ackArrived)
-        print("2debug: CommandSender.__init__()")
+
         # dict of command acks we are waiting on + the time when sent
         self.ackWaiting = dict()
         # Variable to keep track of the timer
@@ -172,7 +172,7 @@ class CommandSender:
         print(
             f'defcallbackCOMMAND_ACK: ({commandName}): {result} (ACK: {ack_message}), originalCommand: {ackedCommand}')
 
-    def commandSenderNonBlocking(self, commandName, target_system, target_component, connection=None, senderType=0, param1=0, param2=0, param3=0, param4=0, param5=0, param6=0, param7=0, callback=defaultCallback):
+    def commandSenderNonBlocking(self, commandName, target_system=None, target_component= None, connection=None, senderType=1, param1=0, param2=0, param3=0, param4=0, param5=0, param6=0, param7=0, callback=defaultCallback):
         # TODO - handle wrong sender type callback?
         # Record sending of deprecated /wip type?
         # Record receiving of deprecated/WIP message.
@@ -199,12 +199,18 @@ class CommandSender:
         print(f'debug: commandSenderNonBlocking()')
         # Set value of connection to be self.connection if it is passed in as None.
         # (Instance variables cant be function defaults)
+
+        target_system = target_system if target_system else self.target_system_id
+        target_component = target_component if target_component else self.target_component_id
         usedConnection = connection if connection else self.connection
+
 
         sent_command = {"commandName": commandName, "target_system": target_system, "target_component": target_component, "senderType": senderType,
                         "param1": param1, "param2": param2, "param3": param3, "param4": param4, "param5": param5, "param6": param6, "param7": param7, "callback": callback}
 
         # create our command long message.
+
+
 
         if senderType == 0:  # command long
             print('commandSenderNonBlocking: ' +
@@ -240,7 +246,10 @@ class CommandSender:
 
         usedConnection.send(command_sender)
 
-    def sendCommandRequestMessageNonBlocking(self, target_system, target_component, request_message_id, connection=None, index_id=0, param3=0, param4=0, param5=0, param6=0, param7=0, senderType=1, callback=None):
+
+
+
+    def sendCommandRequestMessageNonBlocking(self, request_message_id, target_system=None, target_component=None, connection=None, index_id=0, param3=0, param4=0, param5=0, param6=0, param7=0, senderType=1, callback=None):
         """
         Request a message.
 
@@ -258,11 +267,15 @@ class CommandSender:
 
         """
         print("REQUEST MESSAGE FUNC")
+        target_system = target_system if target_system else self.target_system_id
+        target_component = target_component if target_component else self.target_component_id
+        usedConnection = connection if connection else self.connection
+
         if callback:
-            self.commandSenderNonBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_REQUEST_MESSAGE', target_system=target_system, target_component=target_component,
+            self.commandSenderNonBlocking(connection=usedConnection, senderType=senderType, commandName='MAV_CMD_REQUEST_MESSAGE', target_system=target_system, target_component=target_component,
                                           param1=request_message_id, param2=index_id, param3=param3, param4=param4, param5=param5, param6=param6, param7=param7, callback=callback)
         else:
-            self.commandSenderNonBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_REQUEST_MESSAGE', target_system=target_system,
+            self.commandSenderNonBlocking(connection=usedConnection, senderType=senderType, commandName='MAV_CMD_REQUEST_MESSAGE', target_system=target_system,
                                           target_component=target_component, param1=request_message_id, param2=index_id, param3=param3, param4=param4, param5=param5, param6=param6, param7=param7)
 
     def sendCommandSetGlobalOriginNonBlocking(self, target_system, target_component, lat, lon, alt, connection=None, senderType=1):
@@ -284,17 +297,7 @@ class CommandSender:
                                       target_component=target_component, param1=0, param2=0, param3=0, param4=0, param5=lat, param6=lon, param7=alt)
         # Should get back ACK and GPS_GLOBAL_ORIGIN
 
-    def sendAllCommands(self, target_system, target_component, connection=None, senderType=0):
-        # Sends all commands, one after another with a space between. We're just trying to work out if supported or not.
-        # Get all commandds
-        # targetSystem = 1
-        # targetComponent = message_set.enum("MAV_COMP_ID_AUTOPILOT1")
-        allCommands = self.docs.getCommands()
-        for name in allCommands.keys():
-            print(f"Sending: {name}")
-            self.commandSenderNonBlocking(connection=connection, senderType=senderType, commandName=name, target_system=target_system,
-                                          target_component=target_component, param1=0, param2=0, param3=0, param4=0, param5=0, param6=0, param7=0)
-            time.sleep(1)
+
 
     def sendCommandArm(self, target_system, target_component, arm=1, connection=None, senderType=0):
         """
