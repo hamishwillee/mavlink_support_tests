@@ -59,7 +59,7 @@ class ResettableTimer:
         """
         if self.timer and self.timer.is_alive():
             self.timer.cancel()
-            #print("Existing timer cancelled. Resetting...")
+            # print("Existing timer cancelled. Resetting...")
         self._start_new_timer()
 
     def cancel(self):

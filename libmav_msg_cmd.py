@@ -14,19 +14,17 @@ from collections import deque
 import numpy as np
 
 
-
-
 def inspect_object(object):
     print(f"Public API: {type(object).__name__}")
     for attr in dir(object):
-        if not attr.startswith('__'):
+        if not attr.startswith("__"):
             value = getattr(object, attr)
             print(f"  {attr} (Value: {value}) (type: {type(value)})")
 
 
 # XMLDialectInfo really need to be able to specify path to this
 
-mavlinkDocs = XMLDialectInfo(dialect='development')
+mavlinkDocs = XMLDialectInfo(dialect="development")
 
 
 # print(id_value_dict_MAV_TYPE)
@@ -45,11 +43,10 @@ mavlinkDocs = XMLDialectInfo(dialect='development')
 # Create a message set from a mavlink xml file
 # message_set = libmav.MessageSet('./mavlink/message_definitions/v1.0/common.xml')
 # message_set = libmav.MessageSet('./mavlink/message_definitions/v1.0/ardupilotmega.xml')
-message_set = libmav.MessageSet(
-    './mavlink/message_definitions/v1.0/development.xml')
+message_set = libmav.MessageSet("./mavlink/message_definitions/v1.0/development.xml")
 
 # Create a heartbeat message
-heartbeat_message = message_set.create('HEARTBEAT')
+heartbeat_message = message_set.create("HEARTBEAT")
 heartbeat_dict = {
     "type": message_set.enum("MAV_TYPE_GCS"),
     "autopilot": message_set.enum("MAV_AUTOPILOT_INVALID"),
@@ -70,30 +67,30 @@ INFO  [mavlink] mode: Gimbal, data rate: 400000 B/s on udp port 13030 remote por
 """
 
 # connectionType = 'px4wsl2_companion_udp_client'
-connectionType = 'px4wsl2_companion_udp_server'
+connectionType = "px4wsl2_companion_udp_server"
 # connectionType = 'px4wsl2_normal_udp_client'
 # connectionType = 'px4wsl2_normal_udp_server'
 
-if connectionType == 'px4wsl2_companion_udp_client':
-    connection_address = '172.19.48.140'
+if connectionType == "px4wsl2_companion_udp_client":
+    connection_address = "172.19.48.140"
     # Onboard, data rate: 4000000 B/s on udp port 14580 remote port 14540
     connection_port = 14580
     conn_physical = libmav.UDPClient(connection_address, connection_port)
 
 # Normal, data rate: 4000000 B/s on udp port 18570 remote port 14550
-if connectionType == 'px4wsl2_normal_udp_client':
-    connection_address = '172.19.48.140'
+if connectionType == "px4wsl2_normal_udp_client":
+    connection_address = "172.19.48.140"
     connection_port = 18570  # 18570
     conn_physical = libmav.UDPClient(connection_address, connection_port)
 
 # Normal, data rate: 4000000 B/s on udp port 18570 remote port 14550
-if connectionType == 'px4wsl2_normal_udp_server':
+if connectionType == "px4wsl2_normal_udp_server":
     # connection_address = '172.19.48.140'
     connection_port = 14550  # 18570
     conn_physical = libmav.UDPServer(connection_port)
 
 # Normal, data rate: 4000000 B/s on udp port 18570 remote port 14550
-if connectionType == 'px4wsl2_companion_udp_server':
+if connectionType == "px4wsl2_companion_udp_server":
     # connection_address = '172.19.48.140'
     # Onboard, data rate: 4000000 B/s on udp port 14580 remote port 14540
     connection_port = 14540
@@ -124,10 +121,14 @@ if connectionType == 'px4wsl2_companion_udp_server':
 # default system ID=componentID=97
 own_mavlink_ids = {
     "system_id": 250,  # Some GCS unallocated id
-    "component_id": 194  # MAV_COMP_ID_ONBOARD_COMPUTER4 - could be anything
+    "component_id": 194,  # MAV_COMP_ID_ONBOARD_COMPUTER4 - could be anything
 }
-conn_runtime = libmav.NetworkRuntime(libmav.Identifier(
-    own_mavlink_ids["system_id"], own_mavlink_ids["component_id"]), message_set, heartbeat_message, conn_physical)
+conn_runtime = libmav.NetworkRuntime(
+    libmav.Identifier(own_mavlink_ids["system_id"], own_mavlink_ids["component_id"]),
+    message_set,
+    heartbeat_message,
+    conn_physical,
+)
 
 
 # inspect_object(conn_runtime) # (a NetworkRuntime)
@@ -146,6 +147,7 @@ autopilotInfoAll = dict()
 
 # identity_check_callback_handle = connection.add_message_callback(identityCheck)
 
+
 class MAVLinkSupportInfo:
     def __init__(self):
         # Creating instance variables
@@ -163,10 +165,12 @@ class MAVLinkSupportInfo:
         allCommands = mavlinkDocs.getCommands()
         for name in allCommands.keys():
             self.__commands[name] = {
-                'name': name, 'id': allCommands[name]['value'], 'result': None, }
+                "name": name,
+                "id": allCommands[name]["value"],
+                "result": None,
+            }
 
     def messageArrived(self, msg):
-
         # Add code in to work out what autopilot we are talking to.
         self.identityCheck(msg)
 
@@ -174,12 +178,12 @@ class MAVLinkSupportInfo:
         self.currentMode(msg)
 
         # Discard messages if we haven't yet found an autopilot (or "not a GCS")
-        if 'system_id' not in self.__identity:
+        if "system_id" not in self.__identity:
             # print("Identity of system not yet known")
             return
 
         # Discard messages if from wrong type (ie "a GCS")
-        if not self.__identity['system_id'] == msg.header.system_id:
+        if not self.__identity["system_id"] == msg.header.system_id:
             # print(f"Wrong system id: {msg.header.system_id}")
             return
 
@@ -192,7 +196,9 @@ class MAVLinkSupportInfo:
         # print(f"timeRunning {timeRunning}")
         timeSinceLastNewMessage = 0
         if self.__new_message_timestamp:
-            timeSinceLastNewMessage = self.__last_timestamp - self.__new_message_timestamp
+            timeSinceLastNewMessage = (
+                self.__last_timestamp - self.__new_message_timestamp
+            )
 
         if timeSinceLastNewMessage > 20:
             pass
@@ -200,7 +206,9 @@ class MAVLinkSupportInfo:
 
         # After 30 s of run-time we clear the starting flag
         # This allows us to identify all the messages that arrive on first boot.
-        if self.__starting and timeRunning > 30:  # TODO Should set this to be passed in or global value
+        if (
+            self.__starting and timeRunning > 30
+        ):  # TODO Should set this to be passed in or global value
             # print(f"timeSinceLastNewMessage {timeSinceLastNewMessage}, timeRunning {timeRunning}")
             self.__starting = None
 
@@ -220,19 +228,27 @@ class MAVLinkSupportInfo:
         if messageName not in self.__accumulator:
             first_timestamp = time.monotonic()
             self.__accumulator[messageName] = {
-                "count": 1, "first_timestamp": first_timestamp, "last_timestamp": first_timestamp, "maxHz": 0, "minHz": 1000000}
-            if self.__no_message_change:  # ie haven't started changing what gets streamed
-                self.__accumulator[messageName]['initial'] = True
+                "count": 1,
+                "first_timestamp": first_timestamp,
+                "last_timestamp": first_timestamp,
+                "maxHz": 0,
+                "minHz": 1000000,
+            }
+            if (
+                self.__no_message_change
+            ):  # ie haven't started changing what gets streamed
+                self.__accumulator[messageName]["initial"] = True
 
-            print(f'Debug: Acc: New Message: {messageName}')
+            print(f"Debug: Acc: New Message: {messageName}")
             new_message_dict = msg.to_dict()
-            print(f'Debug: Acc: New Message: {new_message_dict}')
+            print(f"Debug: Acc: New Message: {new_message_dict}")
 
         else:
             self.__accumulator[messageName]["count"] += 1
             last_timestamp = time.monotonic()
-            timediff_last = last_timestamp - \
-                self.__accumulator[messageName]["last_timestamp"]
+            timediff_last = (
+                last_timestamp - self.__accumulator[messageName]["last_timestamp"]
+            )
             # print(timediff_last)
             hz_last = 1 / timediff_last
             if hz_last > self.__accumulator[messageName]["maxHz"]:
@@ -243,9 +259,10 @@ class MAVLinkSupportInfo:
 
             # print(hz_last)
             self.__accumulator[messageName]["hz_last"] = hz_last
-            hz_avg = 1 / \
-                ((last_timestamp-self.__accumulator[msg.name]
-                 ["first_timestamp"])/self.__accumulator[messageName]["count"])
+            hz_avg = 1 / (
+                (last_timestamp - self.__accumulator[msg.name]["first_timestamp"])
+                / self.__accumulator[messageName]["count"]
+            )
             # print(hz_avg)
             # Across the whole queue
             self.__accumulator[messageName]["hz_avg"] = hz_avg
@@ -262,33 +279,40 @@ class MAVLinkSupportInfo:
             self.__accumulator[msg.name]["queue"] = msgQueueTime
 
         # COMMAND_ACK handling
-        if messageName == 'COMMAND_ACK':
+        if messageName == "COMMAND_ACK":
             command_dict = msg.to_dict()
             # inspect_object(command_dict)
             # print(command_dict)
             # for key, field in command_dict.items():
             #   print(f"{key}: {field}")
             # get id from command
-            command_id_in_ack = command_dict['command']
+            command_id_in_ack = command_dict["command"]
             # print(f"debug: command_id_in_ack: {command_id_in_ack}")
-            command_name_for_ack = mavlinkDocs.getCommandName(
-                command_id_in_ack)
+            command_name_for_ack = mavlinkDocs.getCommandName(command_id_in_ack)
             # pprint.pprint(command_name_for_ack)
-            result_in_ack = command_dict['result']
+            result_in_ack = command_dict["result"]
             # result_name = mavlinkDocs.getEnumEntryNameFromId('MAV_RESULT', result_in_ack)
             command_supported = False if result_in_ack == 3 else True
 
             if command_name_for_ack not in self.__commands:
                 # We don't expect extra commands to be received than the ones we send.
                 self.__commands[command_name_for_ack] = {
-                    'name': command_name_for_ack, 'id': command_id_in_ack, 'result': command_supported, 'unexpected': True}
+                    "name": command_name_for_ack,
+                    "id": command_id_in_ack,
+                    "result": command_supported,
+                    "unexpected": True,
+                }
             else:
-                if self.__commands[command_name_for_ack]['result'] is None:
-                    self.__commands[command_name_for_ack]['result'] = command_supported
+                if self.__commands[command_name_for_ack]["result"] is None:
+                    self.__commands[command_name_for_ack]["result"] = command_supported
                 else:
-                    if self.__commands[command_name_for_ack]['result'] is not command_supported:
+                    if (
+                        self.__commands[command_name_for_ack]["result"]
+                        is not command_supported
+                    ):
                         print(
-                            f"debug: ACK changed from supported to unsupported (or visa versa)!: {command_name_for_ack}")
+                            f"debug: ACK changed from supported to unsupported (or visa versa)!: {command_name_for_ack}"
+                        )
 
             # pprint.pprint(self.__commands)
 
@@ -300,7 +324,7 @@ class MAVLinkSupportInfo:
         # print(inspect_object(msg.header))
 
         # print(msg.name)
-        if msg.name == "HEARTBEAT" and not 'autopilot' in self.__identity:
+        if msg.name == "HEARTBEAT" and not "autopilot" in self.__identity:
             # print(msg)
             message_dict = msg.to_dict()
             # print(message_dict)
@@ -309,30 +333,35 @@ class MAVLinkSupportInfo:
             # I think I only want things that identify as an autopilot component for this. Should check component iD too just to see.
 
             autopilot_type = mavlinkDocs.getEnumEntryNameFromId(
-                'MAV_AUTOPILOT', message_dict['autopilot'])
-            if 'MAV_AUTOPILOT_INVALID' == autopilot_type:
+                "MAV_AUTOPILOT", message_dict["autopilot"]
+            )
+            if "MAV_AUTOPILOT_INVALID" == autopilot_type:
                 print("ignore GCS")
                 # TODO A MORE THOROUGH CHECK that locks to a component id.
                 return
 
-            self.__identity['system_id'] = msg.header.system_id
-            self.__identity['component_id'] = msg.header.component_id
+            self.__identity["system_id"] = msg.header.system_id
+            self.__identity["component_id"] = msg.header.component_id
 
-            self.__identity['autopilot'] = autopilot_type
-            self.__identity['type'] = mavlinkDocs.getEnumEntryNameFromId(
-                'MAV_TYPE', message_dict['type'])
+            self.__identity["autopilot"] = autopilot_type
+            self.__identity["type"] = mavlinkDocs.getEnumEntryNameFromId(
+                "MAV_TYPE", message_dict["type"]
+            )
             print(self.__identity)
-        if msg.name == "AUTOPILOT_VERSION" and not 'version' in self.__identity and 'autopilot' in self.__identity:
+        if (
+            msg.name == "AUTOPILOT_VERSION"
+            and not "version" in self.__identity
+            and "autopilot" in self.__identity
+        ):
             message_dict = msg.to_dict()
             # print(message_dict)
 
-            major_version = (
-                message_dict['middleware_sw_version'] >> (8 * 3)) & 0xFF
-            minor_version = (
-                message_dict['middleware_sw_version'] >> (8 * 2)) & 0xFF
-            patch_version = (
-                message_dict['middleware_sw_version'] >> (8 * 1)) & 0xF
-            self.__identity['version'] = f"{major_version}.{minor_version}.{patch_version}"
+            major_version = (message_dict["middleware_sw_version"] >> (8 * 3)) & 0xFF
+            minor_version = (message_dict["middleware_sw_version"] >> (8 * 2)) & 0xFF
+            patch_version = (message_dict["middleware_sw_version"] >> (8 * 1)) & 0xF
+            self.__identity["version"] = (
+                f"{major_version}.{minor_version}.{patch_version}"
+            )
             print(self.__identity)
 
     def currentMode(self, msg):
@@ -356,19 +385,37 @@ class MAVLinkSupportInfo:
 
     def __round_to_nearest_standard_hz(self, value):
         # List of standard frequencies
-        standard_frequencies = [100, 50, 40, 30, 20, 10, 5,
-                                4, 3, 2, 1, 0.5, 0.33, 0.25, 0.2, 0.1, 0.02, 0.01]
+        standard_frequencies = [
+            100,
+            50,
+            40,
+            30,
+            20,
+            10,
+            5,
+            4,
+            3,
+            2,
+            1,
+            0.5,
+            0.33,
+            0.25,
+            0.2,
+            0.1,
+            0.02,
+            0.01,
+        ]
         array = np.array(standard_frequencies)
         index = (np.abs(array - value)).argmin()
         standard_value = array[index]
-        diff = np.abs(value - standard_value)/standard_value*100
+        diff = np.abs(value - standard_value) / standard_value * 100
         if value > 110 or value < 0.006:
-            print(
-                f"val: {value} outside expected range (st_val: {standard_value})")
+            print(f"val: {value} outside expected range (st_val: {standard_value})")
             pass
         if diff > 10:
             print(
-                f"diff: {diff} (value different to standard value) - st_val: {standard_value}")
+                f"diff: {diff} (value different to standard value) - st_val: {standard_value}"
+            )
             pass
         return standard_value
 
@@ -377,12 +424,13 @@ class MAVLinkSupportInfo:
             return None
 
         lastPeriod = self.__accumulator[msgName]["queue"][-1]
-        lastFrequency = 1/lastPeriod
+        lastFrequency = 1 / lastPeriod
 
-        timeDiffLastStamp = time.monotonic(
-        ) - self.__accumulator[msgName]["last_timestamp"]
+        timeDiffLastStamp = (
+            time.monotonic() - self.__accumulator[msgName]["last_timestamp"]
+        )
         # More than 2 times measured period old we don't know actual
-        ageOfLastMessage = timeDiffLastStamp/lastPeriod
+        ageOfLastMessage = timeDiffLastStamp / lastPeriod
         # print(f"msgName: {msgName}, lastPeriod: {lastPeriod}, lastFrequency: {lastFrequency}, ageOfLastMessage: {ageOfLastMessage}")
         if ageOfLastMessage > 2:
             return None
@@ -403,15 +451,15 @@ class MAVLinkSupportInfo:
         queueList = self.__accumulator[msgName]["queue"]
         averagePeriod = np.mean(queueList)
 
-        roundedHzAv = self.__round_to_nearest_standard_hz(1/averagePeriod)
-        roundedPeriodAv = 1/roundedHzAv
+        roundedHzAv = self.__round_to_nearest_standard_hz(1 / averagePeriod)
+        roundedPeriodAv = 1 / roundedHzAv
 
         maxHz = self.__accumulator[msgName]["maxHz"]
         minHz = self.__accumulator[msgName]["minHz"]
-        avMaxMin = 100 * (maxHz - minHz)/maxHz
+        avMaxMin = 100 * (maxHz - minHz) / maxHz
 
         if avMaxMin < 20:
-            return {"std": roundedHzAv, "av": round(1/averagePeriod, 3)}
+            return {"std": roundedHzAv, "av": round(1 / averagePeriod, 3)}
 
         # print(f"mean (T): {averagePeriod}, (Hz): {1/averagePeriod}, rndHz: {round(1/averagePeriod)}, rndstd: {roundedHzAv}, maxHz: {maxHz}, minHz: {minHz}, avMaxMin: {avMaxMin}")
 
@@ -427,10 +475,12 @@ class MAVLinkSupportInfo:
         # print(f"std_dev {std_dev}")
 
         countIfStreamed = totaltimeAllMessages // roundedPeriodAv  # whole number part
-        count = self.__accumulator[msgName]['count']
-        streamTest = (abs(countIfStreamed-count)/countIfStreamed)*100
+        count = self.__accumulator[msgName]["count"]
+        streamTest = (abs(countIfStreamed - count) / countIfStreamed) * 100
 
-        print(f"{msgName} MaybeNotStreamed: streamed% {streamTest},  avMaxMin: {avMaxMin}, Hz: {1/averagePeriod})")
+        print(
+            f"{msgName} MaybeNotStreamed: streamed% {streamTest},  avMaxMin: {avMaxMin}, Hz: {1 / averagePeriod})"
+        )
 
         """
         if streamTest < 50:
@@ -454,14 +504,18 @@ class MAVLinkSupportInfo:
         none_commands = []
 
         for command_name in self.__commands.keys():
-            if self.__commands[command_name]['result'] is True:
+            if self.__commands[command_name]["result"] is True:
                 true_commands.append(command_name)
-            elif self.__commands[command_name]['result'] is False:
+            elif self.__commands[command_name]["result"] is False:
                 false_commands.append(command_name)
             else:
                 none_commands.append(command_name)
 
-        return {'supported': true_commands, 'unsupported': false_commands, 'unknown': none_commands}
+        return {
+            "supported": true_commands,
+            "unsupported": false_commands,
+            "unknown": none_commands,
+        }
 
         return self.__commands
 
@@ -473,9 +527,9 @@ class MAVLinkSupportInfo:
                 stdRate = estRates["std"]
                 actualRate = self.getMessageCurrentHz(msg)
                 if stdRate:
-                    self.__messages[msg]['nominalHz'] = stdRate
+                    self.__messages[msg]["nominalHz"] = stdRate
                 if avRate:
-                    self.__messages[msg]['avHz'] = avRate
+                    self.__messages[msg]["avHz"] = avRate
 
 
 msgInfo = MAVLinkSupportInfo()
@@ -483,15 +537,20 @@ msgInfo = MAVLinkSupportInfo()
 
 # Get callback for any message.
 # all_messages_callback_handle = connection.add_message_callback(lambda msg: print(f'Yay {msg.name}'))
-all_messages_callback_handle = connection.add_message_callback(
-    msgInfo.messageArrived)
+all_messages_callback_handle = connection.add_message_callback(msgInfo.messageArrived)
 
 
 def getSupportedModes():
     print("debug: getSupportedModes: start")
     from service_tests import standard_modes
-    modesTest = standard_modes.StandardModesTest(connection=connection, mavlinkDocs=mavlinkDocs, libmav_message_set=message_set,
-                                                 own_system_id=own_mavlink_ids["system_id"], own_component_id=own_mavlink_ids["component_id"])
+
+    modesTest = standard_modes.StandardModesTest(
+        connection=connection,
+        mavlinkDocs=mavlinkDocs,
+        libmav_message_set=message_set,
+        own_system_id=own_mavlink_ids["system_id"],
+        own_component_id=own_mavlink_ids["component_id"],
+    )
     modesTest.getSupportedModes()
 
 
@@ -516,12 +575,20 @@ print("Getting autopilot version ... - 5s")
 targetSystem = 1
 # TODO We should get from our connection.
 targetComponent = message_set.enum("MAV_COMP_ID_AUTOPILOT1")
-request_message_id = message_set.id_for_message('AUTOPILOT_VERSION')
-commander = command_sender.CommandSender(connection=connection, mavlinkDocs=mavlinkDocs, libmav_message_set=message_set,
-                                         own_system_id=own_mavlink_ids["system_id"], own_component_id=own_mavlink_ids["component_id"])
+request_message_id = message_set.id_for_message("AUTOPILOT_VERSION")
+commander = command_sender.CommandSender(
+    connection=connection,
+    mavlinkDocs=mavlinkDocs,
+    libmav_message_set=message_set,
+    own_system_id=own_mavlink_ids["system_id"],
+    own_component_id=own_mavlink_ids["component_id"],
+)
 
 commander.sendCommandRequestMessageNonBlocking(
-    target_system=targetSystem, target_component=targetComponent, request_message_id=request_message_id)
+    target_system=targetSystem,
+    target_component=targetComponent,
+    request_message_id=request_message_id,
+)
 
 # Test send
 
@@ -535,7 +602,7 @@ print("end first part")
 
 # The code that does stuff
 
-testGetSupportedModes = False #depr
+testGetSupportedModes = False  # depr
 testGetSupportedModes2 = False
 printMessageAcc = True
 testStreamingBatteryMessages = False
@@ -555,30 +622,47 @@ if testGetSupportedModes2:
     ##compid = own_mavlink_ids["component_id"] # TODO We should get from our connection and pass as a singleton.
     ## Ditto the message_set and the docs. In theory you could pass the thing that represents the connection and the target.
 
-    modethingy = mode_manager.StandardModes(connection=connection, mavlinkDocs=mavlinkDocs, libmav_message_set=message_set, target_system=targetSystem, target_component=targetComponent)
+    modethingy = mode_manager.StandardModes(
+        connection=connection,
+        mavlinkDocs=mavlinkDocs,
+        libmav_message_set=message_set,
+        target_system=targetSystem,
+        target_component=targetComponent,
+    )
     modethingy.requestModes()
     time.sleep(15)
 
 if testStreamingBatteryMessages:
     # Testing streaming of battery messages
-    request_message_id = message_set.id_for_message('BATTERY_STATUS')
-    sendCommandMessageIntervalNonBlocking(connection=connection, target_system=targetSystem,
-                                          target_component=targetComponent, target_message_id=request_message_id, interval=0)
+    request_message_id = message_set.id_for_message("BATTERY_STATUS")
+    sendCommandMessageIntervalNonBlocking(
+        connection=connection,
+        target_system=targetSystem,
+        target_component=targetComponent,
+        target_message_id=request_message_id,
+        interval=0,
+    )
     time.sleep(10)
 
 
 if testStreamingBatteryMessages:
     # Testing streaming of battery messages
-    request_message_id = message_set.id_for_message('BATTERY_STATUS')
-    sendCommandMessageIntervalNonBlocking(connection=connection, target_system=targetSystem,
-                                          target_component=targetComponent, target_message_id=request_message_id, interval=0)
+    request_message_id = message_set.id_for_message("BATTERY_STATUS")
+    sendCommandMessageIntervalNonBlocking(
+        connection=connection,
+        target_system=targetSystem,
+        target_component=targetComponent,
+        target_message_id=request_message_id,
+        interval=0,
+    )
     time.sleep(15)
 
 if testSendAllCommands:
     print("testSendAllCommands")
     # Send all commands (to test ACKS)
     commander.sendAllCommands(
-        target_system=targetSystem, target_component=targetComponent)
+        target_system=targetSystem, target_component=targetComponent
+    )
     # TODO see if we get ack back for all the original messages.
     time.sleep(3)
     pprint.pprint(msgInfo.getCommandSupportInfoSorted())
@@ -586,8 +670,8 @@ if testSendAllCommands:
 
 if printMessageAcc:
     print("printMessageAcc")
-    #pprint.pprint(msgInfo.)
-    #pprint.pprint(messageInfo)
+    # pprint.pprint(msgInfo.)
+    # pprint.pprint(messageInfo)
 
 # print(autopilotInfoAll)
 
@@ -600,7 +684,12 @@ if testMAV_CMD_DO_SET_GLOBAL_ORIGIN:
     print("testMAV_CMD_DO_SET_GLOBAL_ORIGIN")
     # Try send MAV_CMD_DO_SET_GLOBAL_ORIGIN
     commander.sendCommandSetGlobalOriginNonBlocking(
-        target_system=targetSystem, target_component=targetComponent, lat=3, lon=3, alt=4)
+        target_system=targetSystem,
+        target_component=targetComponent,
+        lat=3,
+        lon=3,
+        alt=4,
+    )
     # Want to get back GPS_GLOBAL_ORIGIN
 
     # Test send
@@ -611,11 +700,20 @@ if testMAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN:
     # def sendCommandRebootShutdown(self, target_system, target_component, autopilot = 0, companion = 0, component = 0, component_id = 0, force = False, camera_id = -1, connection=None, senderType=0):
     # Testing send reboot for autopilot without forcing
     commander.sendCommandRebootShutdown(
-        connection=connection, target_system=targetSystem, target_component=targetComponent, autopilot=1)
+        connection=connection,
+        target_system=targetSystem,
+        target_component=targetComponent,
+        autopilot=1,
+    )
     time.sleep(5)
     # Testing send reboot for autopilot with forcing
     commander.sendCommandRebootShutdown(
-        connection=connection, target_system=targetSystem, target_component=targetComponent, autopilot=1, force=True)
+        connection=connection,
+        target_system=targetSystem,
+        target_component=targetComponent,
+        autopilot=1,
+        force=True,
+    )
     time.sleep(10)
 
 
@@ -653,7 +751,7 @@ if testMAV_CMD_DO_SET_MODE:
     PX4_CUSTOM_SUB_MODE_EXTERNAL5 = 15
     PX4_CUSTOM_SUB_MODE_EXTERNAL6 = 16
     PX4_CUSTOM_SUB_MODE_EXTERNAL7 = 17
-    PX4_CUSTOM_SUB_MODE_EXTERNAL8 = 18,
+    PX4_CUSTOM_SUB_MODE_EXTERNAL8 = (18,)
 
     # From mavlink
     MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 0b00000001
@@ -666,69 +764,138 @@ if testMAV_CMD_DO_SET_MODE:
     MAV_MODE_FLAG_SAFETY_ARMED = 0b10000000
 
     # from commander.cpp interpretation of mode requirements.
-    auto_mode_flags = MAV_MODE_FLAG_AUTO_ENABLED | MAV_MODE_FLAG_STABILIZE_ENABLED | MAV_MODE_FLAG_GUIDED_ENABLED
+    auto_mode_flags = (
+        MAV_MODE_FLAG_AUTO_ENABLED
+        | MAV_MODE_FLAG_STABILIZE_ENABLED
+        | MAV_MODE_FLAG_GUIDED_ENABLED
+    )
     custom_auto_mode_flags = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | auto_mode_flags
-    manual_mode_flags = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
-    manual_mode_stabilize_flags = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_STABILIZE_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+    manual_mode_flags = (
+        MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+    )
+    manual_mode_stabilize_flags = (
+        MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+        | MAV_MODE_FLAG_STABILIZE_ENABLED
+        | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+    )
 
-    map_modes = {"MANUAL":        (manual_mode_stabilize_flags, PX4_CUSTOM_MAIN_MODE_MANUAL, 0),
-                 "STABILIZED":    (manual_mode_stabilize_flags, PX4_CUSTOM_MAIN_MODE_STABILIZED, 0),
-                 "ACRO":          (manual_mode_flags, PX4_CUSTOM_MAIN_MODE_ACRO, 0),
-                 "ALTCTL":        (manual_mode_stabilize_flags, PX4_CUSTOM_MAIN_MODE_ALTCTL, 0),
-                 "POSCTL":        (manual_mode_stabilize_flags, PX4_CUSTOM_MAIN_MODE_POSCTL, 0),
-                 "LOITER":        (custom_auto_mode_flags, PX4_CUSTOM_MAIN_MODE_AUTO, PX4_CUSTOM_SUB_MODE_AUTO_LOITER),
-                 "MISSION":       (custom_auto_mode_flags, PX4_CUSTOM_MAIN_MODE_AUTO, PX4_CUSTOM_SUB_MODE_AUTO_MISSION),
-                 "RTL":           (custom_auto_mode_flags, PX4_CUSTOM_MAIN_MODE_AUTO, PX4_CUSTOM_SUB_MODE_AUTO_RTL),
-                 "LAND":          (custom_auto_mode_flags, PX4_CUSTOM_MAIN_MODE_AUTO, PX4_CUSTOM_SUB_MODE_AUTO_LAND),
-                 "FOLLOWME":      (custom_auto_mode_flags, PX4_CUSTOM_MAIN_MODE_AUTO, PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET),
-                 "OFFBOARD":      (custom_auto_mode_flags, PX4_CUSTOM_MAIN_MODE_OFFBOARD, 0),
-                 "TAKEOFF":       (custom_auto_mode_flags, PX4_CUSTOM_MAIN_MODE_AUTO, PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF)}
-
+    map_modes = {
+        "MANUAL": (manual_mode_stabilize_flags, PX4_CUSTOM_MAIN_MODE_MANUAL, 0),
+        "STABILIZED": (manual_mode_stabilize_flags, PX4_CUSTOM_MAIN_MODE_STABILIZED, 0),
+        "ACRO": (manual_mode_flags, PX4_CUSTOM_MAIN_MODE_ACRO, 0),
+        "ALTCTL": (manual_mode_stabilize_flags, PX4_CUSTOM_MAIN_MODE_ALTCTL, 0),
+        "POSCTL": (manual_mode_stabilize_flags, PX4_CUSTOM_MAIN_MODE_POSCTL, 0),
+        "LOITER": (
+            custom_auto_mode_flags,
+            PX4_CUSTOM_MAIN_MODE_AUTO,
+            PX4_CUSTOM_SUB_MODE_AUTO_LOITER,
+        ),
+        "MISSION": (
+            custom_auto_mode_flags,
+            PX4_CUSTOM_MAIN_MODE_AUTO,
+            PX4_CUSTOM_SUB_MODE_AUTO_MISSION,
+        ),
+        "RTL": (
+            custom_auto_mode_flags,
+            PX4_CUSTOM_MAIN_MODE_AUTO,
+            PX4_CUSTOM_SUB_MODE_AUTO_RTL,
+        ),
+        "LAND": (
+            custom_auto_mode_flags,
+            PX4_CUSTOM_MAIN_MODE_AUTO,
+            PX4_CUSTOM_SUB_MODE_AUTO_LAND,
+        ),
+        "FOLLOWME": (
+            custom_auto_mode_flags,
+            PX4_CUSTOM_MAIN_MODE_AUTO,
+            PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET,
+        ),
+        "OFFBOARD": (custom_auto_mode_flags, PX4_CUSTOM_MAIN_MODE_OFFBOARD, 0),
+        "TAKEOFF": (
+            custom_auto_mode_flags,
+            PX4_CUSTOM_MAIN_MODE_AUTO,
+            PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF,
+        ),
+    }
 
     print("\nSwitching to MANUAL mode")
-    target_mode_name = 'MANUAL'
+    target_mode_name = "MANUAL"
     base_mode, target_custom_mode_main, target_custom_sub_mode_auto = map_modes.get(
-        target_mode_name)
-    commander.sendCommandSetModeNonBlocking(target_system=targetSystem, target_component=targetComponent,
-                                            base_mode=base_mode, custom_mode=target_custom_mode_main, custom_submode=target_custom_sub_mode_auto)
+        target_mode_name
+    )
+    commander.sendCommandSetModeNonBlocking(
+        target_system=targetSystem,
+        target_component=targetComponent,
+        base_mode=base_mode,
+        custom_mode=target_custom_mode_main,
+        custom_submode=target_custom_sub_mode_auto,
+    )
     time.sleep(6)
 
-    target_mode_name = 'TAKEOFF'
+    target_mode_name = "TAKEOFF"
     base_mode, target_custom_mode_main, target_custom_sub_mode_auto = map_modes.get(
-        target_mode_name)
-    commander.sendCommandSetModeNonBlocking(target_system=targetSystem, target_component=targetComponent,
-                                            base_mode=base_mode, custom_mode=target_custom_mode_main, custom_submode=target_custom_sub_mode_auto)
+        target_mode_name
+    )
+    commander.sendCommandSetModeNonBlocking(
+        target_system=targetSystem,
+        target_component=targetComponent,
+        base_mode=base_mode,
+        custom_mode=target_custom_mode_main,
+        custom_submode=target_custom_sub_mode_auto,
+    )
     time.sleep(6)
 
-    target_mode_name = 'MISSION'
+    target_mode_name = "MISSION"
     base_mode, target_custom_mode_main, target_custom_sub_mode_auto = map_modes.get(
-        target_mode_name)
-    commander.sendCommandSetModeNonBlocking(target_system=targetSystem, target_component=targetComponent,
-                                            base_mode=base_mode, custom_mode=target_custom_mode_main, custom_submode=target_custom_sub_mode_auto)
+        target_mode_name
+    )
+    commander.sendCommandSetModeNonBlocking(
+        target_system=targetSystem,
+        target_component=targetComponent,
+        base_mode=base_mode,
+        custom_mode=target_custom_mode_main,
+        custom_submode=target_custom_sub_mode_auto,
+    )
     time.sleep(6)
 
-    target_mode_name = 'OFFBOARD'
+    target_mode_name = "OFFBOARD"
     base_mode, target_custom_mode_main, target_custom_sub_mode_auto = map_modes.get(
-        target_mode_name)
-    commander.sendCommandSetModeNonBlocking(target_system=targetSystem, target_component=targetComponent,
-                                            base_mode=base_mode, custom_mode=target_custom_mode_main, custom_submode=target_custom_sub_mode_auto)
+        target_mode_name
+    )
+    commander.sendCommandSetModeNonBlocking(
+        target_system=targetSystem,
+        target_component=targetComponent,
+        base_mode=base_mode,
+        custom_mode=target_custom_mode_main,
+        custom_submode=target_custom_sub_mode_auto,
+    )
     time.sleep(6)
 
-    target_mode_name = 'LOITER'
+    target_mode_name = "LOITER"
     base_mode, target_custom_mode_main, target_custom_sub_mode_auto = map_modes.get(
-        target_mode_name)
-    commander.sendCommandSetModeNonBlocking(target_system=targetSystem, target_component=targetComponent,
-                                            base_mode=base_mode, custom_mode=target_custom_mode_main, custom_submode=target_custom_sub_mode_auto)
+        target_mode_name
+    )
+    commander.sendCommandSetModeNonBlocking(
+        target_system=targetSystem,
+        target_component=targetComponent,
+        base_mode=base_mode,
+        custom_mode=target_custom_mode_main,
+        custom_submode=target_custom_sub_mode_auto,
+    )
     time.sleep(6)
 
-    target_mode_name = 'POSCTL'
+    target_mode_name = "POSCTL"
     base_mode, target_custom_mode_main, target_custom_sub_mode_auto = map_modes.get(
-        target_mode_name)
-    commander.sendCommandSetModeNonBlocking(target_system=targetSystem, target_component=targetComponent,
-                                            base_mode=base_mode, custom_mode=target_custom_mode_main, custom_submode=target_custom_sub_mode_auto)
+        target_mode_name
+    )
+    commander.sendCommandSetModeNonBlocking(
+        target_system=targetSystem,
+        target_component=targetComponent,
+        base_mode=base_mode,
+        custom_mode=target_custom_mode_main,
+        custom_submode=target_custom_sub_mode_auto,
+    )
     time.sleep(6)
-
-
 
 
 print("complete")
