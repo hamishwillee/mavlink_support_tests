@@ -3,6 +3,9 @@ from .command_sender import CommandSender
 # import time
 # import threading
 import pprint
+import json
+from datetime import datetime
+import os
 
 
 class MAVComponent:
@@ -234,5 +237,36 @@ class MAVComponent:
     def report(self):
         self._report["mav_type"] = self.mav_type
         self._report["autopilot"] = self.autopilot
-        self._report["autopilot_version"] = self.autopilot
+        self._report["autopilot_version"] = self.msg_autopilot_version
+        directory = "./reports"
+        try:
+            # Get the current date and time
+            current_datetime = datetime.now()
+
+            # 2. Format the date and time string for the filename
+            timestamp_str = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+
+            # Construct the filename
+            version = self._report["autopilot_version"]["flight_sw_version_str"]
+            version = "".join(version.split(" (MAV_FIRMWARE_VERSION_TYPE"))
+            version = version.replace(")", "_")
+            mav_type = self._report["mav_type"].split("MAV_TYPE_")[1]
+            mav_autopilot = self._report["autopilot"].split("MAV_AUTOPILOT_")[1]
+            filename = f"{mav_autopilot}_{version}_{mav_type}_{timestamp_str}.json"
+
+            # Create the directory if it doesn't exist
+            os.makedirs(directory, exist_ok=True)
+
+            # Full path for the file
+            filepath = os.path.join(directory, filename)
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(self._report, f, indent=4)
+
+                print(f"Successfully wrote data to: {filepath}")
+
+        except IOError as e:
+            print(f"Error writing file: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
         return self._report

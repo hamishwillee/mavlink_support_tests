@@ -7,6 +7,7 @@ Outputs useful lists like "commands that didn't response with whether they are s
 
 import time
 import pprint
+
 from tools.connection import MAVConnection
 
 # connectionType = 'px4wsl2_companion_udp_client'
@@ -28,7 +29,7 @@ print(mavConnection.components)
 # The code that does stuff
 
 testSendAllCommands = True
-testGetAllMessages = False  #
+testGetAllMessages = True  #
 
 
 testGetSupportedModes = False  # depr

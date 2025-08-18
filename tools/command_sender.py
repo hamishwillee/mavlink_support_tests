@@ -182,6 +182,7 @@ class CommandSender:
             f"defaultCallback:COMMAND_ACK: ({commandName}): {result} (ACK: {ack_message}), originalCommand: {ackedCommand}"
         )
 
+
     def commandSenderNonBlocking(
         self,
         commandName,
@@ -312,7 +313,7 @@ class CommandSender:
             senderType (int): 0 for command_long , 1 for command_int (default).
 
 
-            7: Target address for requested message (if message has target address fields). 0: Flight-stack default, 1: address of requestor, 2: broadcast.
+            TODO 7: Target address for requested message (if message has target address fields). 0: Flight-stack default, 1: address of requestor, 2: broadcast.
             callback (function): Optional callback function to call when the command is acknowledged. Default will be used otherwise.
 
         """
@@ -346,7 +347,6 @@ class CommandSender:
         target_system=None,
         target_component=None,
         connection=None,
-        senderType=1,
         callback=defaultCallback,
     ):
         """
@@ -376,7 +376,6 @@ class CommandSender:
             param5=lat,
             param6=lon,
             param7=alt,
-            senderType=senderType,
             callback=callback,
         )
         # Should get back ACK and GPS_GLOBAL_ORIGIN
@@ -493,8 +492,6 @@ class CommandSender:
             target_system (int): MAVLink system ID
             target_component (int): MAVLink component ID
             connection: Connection object for sending. Default None means "self.connection"
-            senderType (int): 0 for command_long , 1 for command_int (default).
-
         """
         target_system = target_system if target_system else self.target_system_id
         target_component = (
