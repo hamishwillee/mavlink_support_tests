@@ -21,7 +21,8 @@ class MessagesTest:
             10, self.accumulator_callback
         )  # Timer for new messages
         mav_component.mav_connection.add_threaded_message_callback(
-            self._messageAccumulator        )
+            self._messageAccumulator
+        )
 
     def accumulator_callback(self):
         """
@@ -149,4 +150,6 @@ class MessagesTest:
                 name=messageName
             )["basename"]
 
-        self.mav_component._report["all_messages"] = messages
+        self.mav_component._report["all_messages"] = (
+            messages  # The messages streamed by default
+        )

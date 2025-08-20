@@ -287,7 +287,7 @@ class CommandSender:
 
         usedConnection.send(command_sender)
 
-    def sendCommandRequestMessageNonBlocking(
+    def requestMessage(
         self,
         request_message_id,
         index_id=0,
@@ -295,29 +295,26 @@ class CommandSender:
         param4=0,
         param5=0,
         param6=0,
-        param7=0,
+        response_target=0,
         target_system=None,
         target_component=None,
         connection=None,
         callback=defaultCallback,
     ):
         """
-        Request a message.
+        Request a message
 
         Args
-            target_system (int): MAVLink system ID
-            target_component (int): MAVLink component ID
             request_message_id (int): Id of message that has been requested - param1
             index_id (int): index if used (corresponds to message) - param2
+            response_target (int): Target address of message stream (if message has target address fields). 0: Flight-stack default (recommended), 1: address of requester, 2: broadcast.
+            target_system (int): MAVLink system ID
+            target_component (int): MAVLink component ID
             connection: Connection object for sending. Default None means "self.connection"
-            senderType (int): 0 for command_long , 1 for command_int (default).
-
-
-            TODO 7: Target address for requested message (if message has target address fields). 0: Flight-stack default, 1: address of requestor, 2: broadcast.
             callback (function): Optional callback function to call when the command is acknowledged. Default will be used otherwise.
 
         """
-        print("REQUEST MESSAGE FUNC")
+        print(f"debug: requestMessage: {request_message_id}")
         target_system = target_system if target_system else self.target_system_id
         target_component = (
             target_component if target_component else self.target_component_id
@@ -332,14 +329,148 @@ class CommandSender:
             param4=param4,
             param5=param5,
             param6=param6,
-            param7=param7,
+            param7=response_target,
             connection=usedConnection,
             target_system=target_system,
             target_component=target_component,
             callback=callback,
         )
 
-    def sendCommandSetGlobalOriginNonBlocking(
+
+    def setMessageInterval(
+        self,
+        request_message_id,
+        interval=-1, #us -  disable by default (-1)
+        index_id=0, # id 0 by default.
+        response_target=0,
+        target_system=None,
+        target_component=None,
+        connection=None,
+        callback=defaultCallback,
+    ):
+        """
+        Set interval for message
+        https://mavlink.io/en/messages/common.html#MAV_CMD_SET_MESSAGE_INTERVAL
+
+        Args
+            request_message_id (int): Id of message to be streamed
+            interval (int): Interval in us requested. -1 to disable.
+            index_id (int): index if used (corresponds to message) - param2
+            response_target (int): Target address of message stream (if message has target address fields). 0: Flight-stack default (recommended), 1: address of requester, 2: broadcast.
+            callback (func): Callback with result. Default to ... default.
+            connection etc BD.
+
+        """
+        print("Debug: Send: MAV_CMD_SET_MESSAGE_INTERVAL")
+        target_system = target_system if target_system else self.target_system_id
+        target_component = (
+            target_component if target_component else self.target_component_id
+        )
+        usedConnection = connection if connection else self.connection
+
+        self.commandSenderNonBlocking(
+            commandName="MAV_CMD_SET_MESSAGE_INTERVAL",
+            param1=request_message_id,
+            param2=interval,
+            param3=index_id,
+            param7=response_target,
+            connection=usedConnection,
+            target_system=target_system,
+            target_component=target_component,
+            callback=callback,
+        )
+
+
+    def getMessageInterval(
+        self,
+        message_id,
+        index_id=0, # id 0 by default.
+        response_target=0,
+        target_system=None,
+        target_component=None,
+        connection=None,
+        callback=defaultCallback,
+        ):
+
+        """
+        Get interval for message.
+
+        Uses MAV_CMD_REQUEST_MESSAGE (512) by default to request MESSAGE_INTERVAL.
+        https://mavlink.io/en/messages/common.html#MAV_CMD_GET_MESSAGE_INTERVAL - deprecated
+        https://mavlink.io/en/messages/common.html#MESSAGE_INTERVAL
+
+        Args
+            message_id (int): Id of message for which we want the rate
+            response_target (int): Target address of message stream (if message has target address fields). 0: Flight-stack default (recommended), 1: address of requester, 2: broadcast.
+            callback (function): Optional callback function to call when the command is acknowledged. Default will be used otherwise.
+            target_system (int): MAVLink system ID
+            target_component (int): MAVLink component ID
+            connection: Connection object for sending. Default None means "self.connection"
+            senderType (int): 0 for command_long , 1 for command_int (default).
+
+        The interval between messages for a particular MAVLink message ID. This message is sent in response to the MAV_CMD_REQUEST_MESSAGE command with param1=244 (this message) and param2=message_id (the id of the message for which the interval is required). It may also be sent in response to MAV_CMD_GET_MESSAGE_INTERVAL. This interface replaces DATA_STREAM.
+            Field Name	Type	Units	Description
+            message_id	uint16_t		The ID of the requested MAVLink message. v1.0 is limited to 254 messages.
+            interval_us	int32_t	us	The interval between two messages. A value of -1 indicates this stream is disabled, 0 indicates it is not available, > 0 indicates the interval at which it is sent.
+
+        """
+        target_system = target_system if target_system else self.target_system_id
+        target_component = (
+            target_component if target_component else self.target_component_id
+        )
+        usedConnection = connection if connection else self.connection
+
+        self.requestMessage(
+            #request_message_id='MESSAGE_INTERVAL',
+            request_message_id=244,
+            index_id=message_id,
+            response_target=response_target,
+            connection=usedConnection,
+            target_system=target_system,
+            target_component=target_component,
+            callback=callback,
+        )
+
+        ##TODO TRY using the deprecated requester?
+
+
+    def getMessageIntervalDeprecated(
+        self,
+        message_id,
+        target_system=None,
+        target_component=None,
+        connection=None,
+        callback=defaultCallback,
+        ):
+
+        """
+        Get interval for message using deprecated MAV_CMD_GET_MESSAGE_INTERVAL method.
+
+        Args
+            message_id (int): Id of message for which we want the rate
+            callback (function): Optional callback function to call when the command is acknowledged. Default will be used otherwise.
+            target_system (int): MAVLink system ID
+            target_component (int): MAVLink component ID
+            connection: Connection object for sending. Default None means "self.connection"
+        """
+        target_system = target_system if target_system else self.target_system_id
+        target_component = (
+            target_component if target_component else self.target_component_id
+        )
+        usedConnection = connection if connection else self.connection
+
+        self.commandSenderNonBlocking(
+            commandName="MAV_CMD_GET_MESSAGE_INTERVAL",
+            param1=message_id,
+            connection=usedConnection,
+            target_system=target_system,
+            target_component=target_component,
+            callback=callback,
+        )
+
+
+
+    def setGlobalOrigin(
         self,
         lat,
         lon,
@@ -380,7 +511,7 @@ class CommandSender:
         )
         # Should get back ACK and GPS_GLOBAL_ORIGIN
 
-    def sendCommandArm(
+    def arm(
         self,
         arm=1,
         target_system=None,
@@ -417,7 +548,7 @@ class CommandSender:
             callback=callback,
         )
 
-    def sendCommandRebootShutdown(
+    def rebootShutdown(
         self,
         autopilot=0,
         companion=0,
@@ -470,7 +601,7 @@ class CommandSender:
             callback=callback,
         )  # Note, default sender type.
 
-    def sendCommandSetModeNonBlocking(
+    def setMode(
         self,
         base_mode,
         custom_mode,
@@ -509,45 +640,7 @@ class CommandSender:
             callback=callback,
         )
 
-    """
-def setCommandTakeoff(connection, target_system, target_component, pitch, yaw, lat, lon, alt, senderType=0):
 
-    Set message interval for specified message in us.
-
-    Args
-        connection (Connection): The connection object to use for sending
-        target_system (int): MAVLink system ID
-        target_component (int): MAVLink component ID
-        senderType (int): 0 for command_long (default), 1 for command_int.
-
-        1: Pitch	Minimum pitch (if airspeed sensor present), desired pitch without sensor	deg
-        2	Empty
-        3	Empty
-        4: Yaw	Yaw angle (if magnetometer present), ignored without magnetometer. NaN to use the current system yaw heading mode (e.g. yaw towards next waypoint, yaw to home, etc.).	deg
-        5: Latitude	Latitude
-        6: Longitude	Longitude
-        7: Altitude	Altitude
-
-    """
-
-    """
-def setMessageIntervalBlocking(connection, target_system, target_component, target_message, interval, senderType=0):
-
-    Set message interval for specified message in us.
-
-    Args
-        connection (Connection): The connection object to use for sending
-        target_system (int): MAVLink system ID
-        target_component (int): MAVLink component ID
-        target_message (string): String name for message for which interval is set.
-        interval (int): Interval between messages of type target_message in us. -1 to disable.
-        senderType (int): 0 for command_long (default), 1 for command_int.
-
-    targetMessageId = message_set.id_for_message(target_message)
-    commandSenderBlocking(connection=connection, senderType=senderType, commandName='MAV_CMD_SET_MESSAGE_INTERVAL', target_system=target_system, target_component=target_component, param1=targetMessageId, param2=interval)
-
-    #Note, target id of command ACK is   target_component: 97, target_system: 97. Is that what we are by default?
-    """
 
     def sendTestCommands(self):
         print("sleep 1 before takeoff and arm")

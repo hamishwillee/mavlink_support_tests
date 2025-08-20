@@ -74,13 +74,17 @@ class XMLDialectInfo:
         return self.dict["xml_dialects"][self.dialect]["messages"]
 
     def getMessage(self, id=None, name=None):
+        print(f"debug: getMessage: id:{id} name:{name}")
+
         if id is None and name is None:
             raise ValueError("Either id or name must be specified")
-        if not id and not name:
+
+        if id is not None and name is not None:
             raise ValueError("Only one of id or name must be specified")
-        if name:
+
+        if name is not None:
             return self.dict["xml_dialects"][self.dialect]["messages"][name]
-        if id:
+        if id is not None:
             message_by_name_dict = self.dict["xml_dialects"][self.dialect]["messages"]
             message_by_id_dict = {
                 value["id"]: value for key, value in message_by_name_dict.items()
@@ -91,6 +95,7 @@ class XMLDialectInfo:
         return self.dict["xml_dialects"][self.dialect]["messages"][name]["id"]
 
     def getMessageName(self, id):
+        print(f"debug: getMessageName: {id}")
         return self.getMessage(id=id)["name"]
 
     def getEnums(self):

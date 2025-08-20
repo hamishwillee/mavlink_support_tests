@@ -28,9 +28,10 @@ print(mavConnection.components)
 
 # The code that does stuff
 
-testSendAllCommands = True
-testGetAllMessages = True  #
 
+
+testGetMessagesStreamable = True  #
+testSendAllCommands = False
 
 testGetSupportedModes = False  # depr
 testGetSupportedModes2 = False
@@ -41,16 +42,22 @@ testMAV_CMD_DO_SET_MODE = False
 testMAV_CMD_DO_SET_GLOBAL_ORIGIN = False
 testMAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN = False
 
-if testGetAllMessages:
-    print("TEST: testGetAllMessages")
-    from tests.all_messages import MessagesTest
 
-    messageTest = MessagesTest(
+
+
+if testGetMessagesStreamable:
+    print("TEST: testGetMessagesStreamable")
+    from tests.messages_get_rates import MessageGetRatesTest
+
+    getMessageRatesTest = MessageGetRatesTest(
         mav_component=mavConnection.components["1_1"]
     )  # Probably need to think about checking type etc for this. Good enough for now.
+    getMessageRatesTest.startTest()
     time.sleep(20)
-    messageTest.report()
+    getMessageRatesTest.report()
+
     # pprint.pprint()
+
 
 
 if testSendAllCommands:
@@ -61,6 +68,9 @@ if testSendAllCommands:
     allCommandsTest.sendAllCommands()  # perhaps standardize on runTests
     time.sleep(20)
     allCommandsTest.report()
+
+
+
 
 
 if testGetSupportedModes2:

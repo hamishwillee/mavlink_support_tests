@@ -54,10 +54,10 @@ class MAVComponent:
         request_message_id = self.mav_connection.message_set.id_for_message(
             "AUTOPILOT_VERSION"
         )
-        # self.commander.sendCommandRequestMessageNonBlocking(target_system=self.target_system_id, target_component=self.target_component_id, request_message_id=request_message_id)
-        self.commander.sendCommandRequestMessageNonBlocking(
+        self.commander.requestMessage(
             request_message_id=request_message_id
         )
+
 
     def isCapabilitySupported(self, capability):
         # TODO: NOT DONE YET
