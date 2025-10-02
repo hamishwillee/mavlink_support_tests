@@ -1,5 +1,5 @@
 """
-Test script for messages
+Test script for getting all messages emitted on start and estimating their frequency
 """
 
 import time
@@ -7,7 +7,7 @@ import pprint
 from tools.timer_resettable import ResettableTimer
 
 
-class MessagesTest:
+class AllMessagesOnStartTest:
     def __init__(self, mav_component):
         # super().__init__(mav_component)
         self.mav_component = mav_component
@@ -17,12 +17,7 @@ class MessagesTest:
 
         # self.__messages = dict()  # The logged info about messages
         # self.__commands = dict()  # The logged info about commands
-        self._timer_new_messages = ResettableTimer(
-            10, self.accumulator_callback
-        )  # Timer for new messages
-        mav_component.mav_connection.add_threaded_message_callback(
-            self._messageAccumulator
-        )
+
 
     def accumulator_callback(self):
         """
@@ -137,19 +132,37 @@ class MessagesTest:
             # update the last timestamp
             self._accumulator[messageName]["last_timestamp"] = time.monotonic()
 
+    def runTest(self):
+        # Starts the test
+        self._timer_new_messages = ResettableTimer(
+            10, self.accumulator_callback
+        )  # Timer for new messages
+        self.mav_component.mav_connection.add_threaded_message_callback(
+            self._messageAccumulator
+        )
+        time.sleep(20)
+
+
     def report(self):
         # Adds report with a key to the component._report dict.
         messages = dict()
-        for messageName in self._accumulator:
+        sorted_keys = sorted(self._accumulator.keys())
+        for messageName in sorted_keys:
+            print(f"mname: {messageName}")
             messages[messageName] = dict()
             try:
                 messages[messageName]["rate"] = self._accumulator[messageName]["Hz"]
+                #print(f"rate: {messages[messageName]['rate']} / {self._accumulator[messageName]['Hz']}")
+
             except:
+                #print(f"exception rate: {self._accumulator[messageName]}")
+
                 messages[messageName]["rate"] = 0
+                #print(f"except rate: {messages[messageName]['rate']} / {self._accumulator[messageName]['Hz']}")
             messages[messageName]["xml"] = self.mav_component.docs.getMessage(
                 name=messageName
             )["basename"]
 
-        self.mav_component._report["all_messages"] = (
+        self.mav_component._report["all_messages_on_start"] = (
             messages  # The messages streamed by default
         )
