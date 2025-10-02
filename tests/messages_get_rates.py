@@ -30,20 +30,27 @@ class MessageGetRatesTest:
                 print(f"debug: MESSAGE_INTERVAL: No message found for id {message_id}")
             interval_us = message_dict["interval_us"]
             frequency_hz = 0
-            streamable = "false"
+            streamable = False
             if interval_us > 0:
                 streamable = "default"
                 frequency_hz = 1000000 / interval_us
             if interval_us == 0:
-                streamable = "true"
+                streamable = True
             if message_name not in self.messages:
-                self.messages[message_name] = {
-                    "_id": message_id,
-                    "_name": message_name,
-                    "interval_us": interval_us,
-                    "frequency_hz": frequency_hz,
-                    "streamable": streamable,
-                }
+                if streamable == "default":
+                    self.messages[message_name] = {
+                        "_id": message_id,
+                        "_name": message_name,
+                        "interval_us": interval_us,
+                        "frequency_hz": frequency_hz,
+                        "streamable": streamable,
+                    }
+                else:
+                    self.messages[message_name] = {
+                        "_id": message_id,
+                        "_name": message_name,
+                        "streamable": streamable,
+                    }
                 print(f"debug: MESSAGE_INTERVAL: ADD: {self.messages[message_name]}")
 
     def ackGetRates(self, command, commandName, result, ack_message, ackedCommand):
@@ -85,6 +92,6 @@ class MessageGetRatesTest:
         # TODO add additional info.
         # Adds report with a key to the component._report dict.
         pprint.pprint(self.messages)
-        self.mav_component._report["all_messages"] = (
+        self.mav_component._report["get_message_interval_all_messages"] = (
             self.messages
         )  # The messages streamed by default

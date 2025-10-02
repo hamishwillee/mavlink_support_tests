@@ -29,9 +29,13 @@ print(mavConnection.components)
 # The code that does stuff
 
 
-
+testGetMessagesOnStart = True
 testGetMessagesStreamable = True  #
-testSendAllCommands = False
+testSendAllCommands = True
+
+testParameterProtocol = True
+
+
 
 testGetSupportedModes = False  # depr
 testGetSupportedModes2 = False
@@ -45,6 +49,7 @@ testMAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN = False
 
 
 
+
 if testGetMessagesStreamable:
     print("TEST: testGetMessagesStreamable")
     from tests.messages_get_rates import MessageGetRatesTest
@@ -53,11 +58,33 @@ if testGetMessagesStreamable:
         mav_component=mavConnection.components["1_1"]
     )  # Probably need to think about checking type etc for this. Good enough for now.
     getMessageRatesTest.startTest()
-    time.sleep(20)
+    #time.sleep(20)
     getMessageRatesTest.report()
 
-    # pprint.pprint()
+if testGetMessagesOnStart:
+    print("TEST: testGetMessagesOnStart")
+    from tests.all_messages_on_start import AllMessagesOnStartTest
 
+    allMessageRatesTest = AllMessagesOnStartTest(
+        mav_component=mavConnection.components["1_1"]
+    )  # Probably need to think about checking type etc for this. Good enough for now.
+    allMessageRatesTest.runTest() # Runs for 20 seconds, blocking
+    allMessageRatesTest.report()
+
+
+
+if testParameterProtocol:
+    print("TEST: testParameterProtocol")
+    from tests.protocol_param import ParameterProtocolTest
+
+    parameterProtocolTest = ParameterProtocolTest(
+        mav_component=mavConnection.components["1_1"]
+    )  # Probably need to think about checking type etc for this. Good enough for now.
+    parameterProtocolTest.runTest() # Runs for 20 seconds, blocking
+    #allMessageRatesTest.report()
+
+
+    # pprint.pprint()
 
 
 if testSendAllCommands:
@@ -68,8 +95,6 @@ if testSendAllCommands:
     allCommandsTest.sendAllCommands()  # perhaps standardize on runTests
     time.sleep(20)
     allCommandsTest.report()
-
-
 
 
 

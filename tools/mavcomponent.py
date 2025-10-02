@@ -28,6 +28,8 @@ class MAVComponent:
         self.mav_connection = mav_connection
         # TODO check type of connection object. Leave if is wrong type.
         self.docs = self.mav_connection.docs
+
+        self.message_set = self.mav_connection.message_set  # Shortcut to message set
         # System ID of drone this object is a proxy for (i.e. it is the target system ID for commands)
         self.target_system_id = target_system_id
 
