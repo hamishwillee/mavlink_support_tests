@@ -1,4 +1,6 @@
 from .command_sender import CommandSender
+from .parameter_manager import ParameterProtocolManager
+
 
 # import time
 # import threading
@@ -45,8 +47,15 @@ class MAVComponent:
             f"Debug: MAVComponent: Created commander with system_id={self.commander.own_system_id} component_id={self.commander.own_component_id}"
         )
 
+
         self.mav_connection.add_threaded_message_callback(self._messageArrived)
+
         self._request_autopilot_version()
+
+        self.protocolManager = ParameterProtocolManager(mav_component=self)
+        self.protocolManager.readAllParameters() # TEST CODE
+
+
 
     def _request_autopilot_version(self):
         """
