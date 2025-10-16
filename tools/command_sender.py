@@ -47,10 +47,10 @@ class CommandSender:
         # Variable to keep track of the timer
         self.timer = None
 
-        print("debug: EXIT CommandSender.__init__() ")
+        #print("debug: EXIT CommandSender.__init__() ")
 
     def set_interval(self, func, sec):
-        print(f"debug: set_interval() called with sec={sec}")
+        #print(f"debug: set_interval() called with sec={sec}")
 
         def func_wrapper():
             if self.ackWaiting:

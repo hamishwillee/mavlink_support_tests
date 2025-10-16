@@ -53,7 +53,7 @@ class MAVComponent:
         self._request_autopilot_version()
 
         self.protocolManager = ParameterProtocolManager(mav_component=self)
-        self.protocolManager.readAllParameters() # TEST CODE
+        #self.protocolManager.readAllParameters() # TEST CODE
 
 
 

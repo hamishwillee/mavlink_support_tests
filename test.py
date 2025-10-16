@@ -78,8 +78,8 @@ if testParameterProtocol:
     from tests.param_protocol import ParameterProtocolTest
 
     mav_component1_1=mavConnection.components["1_1"]
-    protocolManager = mav_component1_1.protocolManager
-    while not protocolManager.tests():
+    paramManager = mav_component1_1.protocolManager
+    while not paramManager.tests():
         print("TEST: WAITING for parameters to load")
         time.sleep(1)
 
@@ -112,11 +112,10 @@ if testGetSupportedModes2:
         target_component=targetComponent,
     )
     modethingy.requestModes()
-    time.sleep(20)
-
+    time.sleep(10)
 
 time.sleep(10)
-pprint.pprint(mavConnection.components["1_1"].report())
+pprint.pprint(mavConnection.components["1_1"].report()) #TODO Reneable.
 print("complete")
 
 # pprint.pprint(mavConnection.components['1_1']._accumulator)

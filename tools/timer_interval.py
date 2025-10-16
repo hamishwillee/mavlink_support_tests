@@ -23,6 +23,10 @@ class IntervalTimer:
             self._timer.start()
 
     def start(self):
+        # If running, return immediately without waiting for the lock.
+        if self._running:
+            return
+
         with self._lock:
             if not self._running:
                 self._running = True

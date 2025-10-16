@@ -108,7 +108,6 @@ class XMLDialectInfo:
         """Get enum entries as dict for name, sorted by name"""
         return self.dict["xml_dialects"][self.dialect]["enums"][name]["entries"]
 
-        return enum_by_id_dict
 
     def getEnumEntriesId(self, name):
         """Get enum entries as dict for name, sorted by id"""
@@ -124,6 +123,11 @@ class XMLDialectInfo:
         """Get enum entries name from id"""
         enum_entries_by_id_dict = self.getEnumEntriesId(enumName)
         return enum_entries_by_id_dict[id]["name"]
+
+    def getEnumEntryIdFromName(self, enumName, name):
+        """Get enum entries name from id"""
+        enum_entries_by_name_dict = self.getEnumEntries(enumName)
+        return enum_entries_by_name_dict[name]["value"]
 
     def getCommands(self):
         print("debug: mavdocs.py: getCommands()")
