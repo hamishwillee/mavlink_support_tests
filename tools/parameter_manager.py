@@ -395,20 +395,20 @@ class ParameterProtocolManager:
 
         if value is None:
             print("ERROR: Set parameter requires a value).")
-            return
+            return False
 
         if self.byteWiseEncoding is None:
-            if not self._checkEncoding():
+            if not self._checkEncoding():  # Sets encoding if it can.
                 print(
                     "ERROR: Cannot set parameters as encoding not known (you can set manually with setEncoding() )."
                 )
-                return
+                return False
 
         if self._stateGettingAllParameters:
             print(
                 f"WARNING: {id} not sent (busy getting all parameters) Set called while getting all parameters (ignored: {id})."
             )
-            return
+            return False
 
         msg = self.message_set.create("PARAM_SET")
         msg["target_system"] = self.target_system_id
@@ -452,40 +452,22 @@ class ParameterProtocolManager:
             use_param_type = self.docs.getEnumEntryIdFromName("MAV_PARAM_TYPE", param_type)
 
         msg["param_type"] = use_param_type
+        #use_param_type is None for C-encoding, otherwise the type.
 
-        # Convert the value to a float based on the type: From MAVParmDict:mavset() in pymavlink
-        # Using byteWiseEncoding True, false, or None to determine which encoding to use
-        paramTypeEntries = self.docs.getEnumEntries("MAV_PARAM_TYPE")
+        if self.byteWiseEncoding:
+            # Use byte-wise encoding
+            encoded_value = self._encode_value(id, use_param_type, value)
+            #test decode value DEBUG
+            decoded_value_test = self._decode_value(id, use_param_type, encoded_value)
 
-        if (
-            use_param_type is not None
-            and use_param_type != paramTypeEntries["MAV_PARAM_TYPE_REAL32"]["value"]
-        ):
-            # need to encode as a float for sending
-            if use_param_type == paramTypeEntries["MAV_PARAM_TYPE_UINT8"]["value"]:
-                vstr = struct.pack(">xxxB", int(value))
-            elif use_param_type == paramTypeEntries["MAV_PARAM_TYPE_INT8"]["value"]:
-                vstr = struct.pack(">xxxb", int(value))
-            elif use_param_type == paramTypeEntries["MAV_PARAM_TYPE_UINT16"]["value"]:
-                vstr = struct.pack(">xxH", int(value))
-            elif use_param_type == paramTypeEntries["MAV_PARAM_TYPE_INT16"]["value"]:
-                vstr = struct.pack(">xxh", int(value))
-            elif use_param_type == paramTypeEntries["MAV_PARAM_TYPE_UINT32"]["value"]:
-                vstr = struct.pack(">I", int(value))
-            elif use_param_type == paramTypeEntries["MAV_PARAM_TYPE_INT32"]["value"]:
-                vstr = struct.pack(">i", int(value))
-            else:
-                print("can't send %s of type %u" % (name, use_param_type))
-                return False
-            (numeric_value,) = struct.unpack(">f", vstr)
         else:
-            if isinstance(value, str) and value.lower().startswith("0x"):
-                numeric_value = int(value[2:], 16)
-            else:
-                numeric_value = float(value)
+            # Use standard encoding
+            encoded_value = self._encode_value(id, None, value)
+            # Test decode value DEBUG
+            decoded_value_test = self._decode_value(id, None, encoded_value)
 
-        msg["param_value"] = numeric_value
-        print(f"DEBUG: param_value converted : {value} -> {numeric_value}")
+        msg["param_value"] = encoded_value
+        print(f"DEBUG: param_value converted : {value} -> {encoded_value} -> {decoded_value_test}")
 
         # Ensure the string does not exceed 16 characters and is encoded as a null terminated byte string
         param_id = id[:16].encode("utf-8").ljust(16, b"\0")
@@ -511,6 +493,94 @@ class ParameterProtocolManager:
         # We should also set timer for expecting return.
         # Perhaps better to invalidate the param rather than delete it, in case we get an error back?
         self.connection.send(msg)
+
+
+    def _encode_value(self, name, param_type, value):
+        """
+        Encodes a value to be sent based on the param type and encoding.
+
+        Args:
+            name (_type_): Name of the parameter to encode
+            param_type (_type_): Type of the parameter to encode. None if unknown. To use C-cast encoding
+            value (_type_): The value to encode
+
+        Returns:
+            _type_: The encoded value.
+        """
+
+        paramTypeEntries = self.docs.getEnumEntries("MAV_PARAM_TYPE")
+
+        if (
+            param_type is not None
+            and param_type != paramTypeEntries["MAV_PARAM_TYPE_REAL32"]["value"]
+        ):
+            # need to encode as a float for sending
+            if param_type == paramTypeEntries["MAV_PARAM_TYPE_UINT8"]["value"]:
+                vstr = struct.pack(">xxxB", int(value))
+            elif param_type == paramTypeEntries["MAV_PARAM_TYPE_INT8"]["value"]:
+                vstr = struct.pack(">xxxb", int(value))
+            elif param_type == paramTypeEntries["MAV_PARAM_TYPE_UINT16"]["value"]:
+                vstr = struct.pack(">xxH", int(value))
+            elif param_type == paramTypeEntries["MAV_PARAM_TYPE_INT16"]["value"]:
+                vstr = struct.pack(">xxh", int(value))
+            elif param_type == paramTypeEntries["MAV_PARAM_TYPE_UINT32"]["value"]:
+                vstr = struct.pack(">I", int(value))
+            elif param_type == paramTypeEntries["MAV_PARAM_TYPE_INT32"]["value"]:
+                vstr = struct.pack(">i", int(value))
+            else:
+                print(f"can't encode {name} of type {param_type}")
+                return False
+            (numeric_value,) = struct.unpack(">f", vstr)
+        else:
+            if isinstance(value, str) and value.lower().startswith("0x"):
+                numeric_value = int(value[2:], 16)
+            else:
+                numeric_value = float(value)
+
+        return numeric_value
+
+    def _decode_value(self, name, param_type, numeric_value):
+        """
+        Decodes a MAVLink-style float-encoded parameter value back to its original type.
+
+        Args:
+            name (_type_): Name of the parameter to decode
+            param_type (_type_): Type of the parameter to decode. None if unknown. To use C-cast decoding
+            numeric_value (float): The encoded float value (as received)
+
+        Returns:
+            _type_: The decoded value.
+        """
+
+        paramTypeEntries = self.docs.getEnumEntries("MAV_PARAM_TYPE")
+
+        # Default: treat as plain float (no reinterpretation)
+        if (
+            param_type is None
+            or param_type == paramTypeEntries["MAV_PARAM_TYPE_REAL32"]["value"]
+        ):
+            return float(numeric_value)
+
+        # Reinterpret float bits as bytes
+        vstr = struct.pack(">f", numeric_value)
+
+        # Decode according to parameter type
+        if param_type == paramTypeEntries["MAV_PARAM_TYPE_UINT8"]["value"]:
+            return struct.unpack(">xxxB", vstr)[0]
+        elif param_type == paramTypeEntries["MAV_PARAM_TYPE_INT8"]["value"]:
+            return struct.unpack(">xxxb", vstr)[0]
+        elif param_type == paramTypeEntries["MAV_PARAM_TYPE_UINT16"]["value"]:
+            return struct.unpack(">xxH", vstr)[0]
+        elif param_type == paramTypeEntries["MAV_PARAM_TYPE_INT16"]["value"]:
+            return struct.unpack(">xxh", vstr)[0]
+        elif param_type == paramTypeEntries["MAV_PARAM_TYPE_UINT32"]["value"]:
+            return struct.unpack(">I", vstr)[0]
+        elif param_type == paramTypeEntries["MAV_PARAM_TYPE_INT32"]["value"]:
+            return struct.unpack(">i", vstr)[0]
+        else:
+            print(f"can't decode {name} of type {param_type}")
+            return None
+
 
     def _messageAccumulator(self, msg):
         messageName = msg.name
