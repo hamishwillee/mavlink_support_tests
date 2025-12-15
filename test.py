@@ -29,9 +29,9 @@ print(mavConnection.components)
 # The code that does stuff
 
 
-testGetMessagesOnStart = True
-testGetMessagesStreamable = True  #
-testSendAllCommands = True
+testGetMessagesOnStart = False
+testGetMessagesStreamable = False  #
+testSendAllCommands = False
 
 testParameterProtocol = True
 
@@ -75,13 +75,13 @@ if testGetMessagesOnStart:
 
 if testParameterProtocol:
     print("TEST: testParameterProtocol")
-    from tests.protocol_param import ParameterProtocolTest
+    from tests.param_protocol import ParameterProtocolTest
 
-    parameterProtocolTest = ParameterProtocolTest(
-        mav_component=mavConnection.components["1_1"]
-    )  # Probably need to think about checking type etc for this. Good enough for now.
-    parameterProtocolTest.runTest() # Runs for 20 seconds, blocking
-    #allMessageRatesTest.report()
+    mav_component1_1=mavConnection.components["1_1"]
+    paramManager = mav_component1_1.protocolManager
+    while not paramManager.tests():
+        print("TEST: WAITING for parameters to load")
+        time.sleep(1)
 
 
     # pprint.pprint()
@@ -112,11 +112,10 @@ if testGetSupportedModes2:
         target_component=targetComponent,
     )
     modethingy.requestModes()
-    time.sleep(20)
-
+    time.sleep(10)
 
 time.sleep(10)
-pprint.pprint(mavConnection.components["1_1"].report())
+pprint.pprint(mavConnection.components["1_1"].report()) #TODO Reneable.
 print("complete")
 
 # pprint.pprint(mavConnection.components['1_1']._accumulator)
